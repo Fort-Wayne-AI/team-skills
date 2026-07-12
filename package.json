@@ -1,0 +1,13 @@
+{
+  "name": "team-skills",
+  "private": true,
+  "description": "Shared CLI tooling and skills for Fort Wayne AI",
+  "type": "module",
+  "dependencies": {
+    "ntn": "^0.19.0"
+  },
+  "scripts": {
+    "ntn": "ntn",
+    "postinstall": "echo 'Team skills installed. Run `npm run ntn -- --version` to verify.'"
+  }
+}
