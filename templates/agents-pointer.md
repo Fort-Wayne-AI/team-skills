@@ -5,5 +5,5 @@ This project uses project-local shared skills installed by `@fort-wayne-ai/team-
 
 - `project-conventions` — versioning, naming, documentation, and release standards for Fort Wayne AI projects.
 
-The skill files live at `.agents/skills/`, `.claude/skills/`, and `.hermes/skills/` and are read directly from disk — no external service required.
+Skill files physically live at `.agents/skills/` (single source of truth). `.claude/skills/` and `.hermes/skills/` are symlinks into `.agents/skills/` — no duplication.
 <!-- team-skills:end -->

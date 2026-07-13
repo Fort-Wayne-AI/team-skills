@@ -6,9 +6,10 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -16,13 +17,16 @@ const packageRoot = resolve(__dirname, "..");
 const skillsRoot = join(packageRoot, "skills");
 const pointerTemplate = readFileSync(join(packageRoot, "templates", "agents-pointer.md"), "utf8");
 const targets = [".agents", ".claude", ".hermes"];
+const PHYSICAL_TARGET = targets[0]; // .agents — single source of truth
 
 function usage(error) {
   const message = `Usage:
   team-skills setup [--project <path>] [--force]
 
 Commands:
-  setup   Copy project-local agent skills into the current project.`;
+  setup   Install shared agent skills into the current project. Skills are
+          physically copied into .agents/skills/ and symlinked from
+          .claude/skills/ and .hermes/skills/.`;
   console[error ? "error" : "log"](message);
   process.exitCode = error ? 1 : 0;
 }
@@ -49,29 +53,53 @@ function writeManagedPointer(project) {
 }
 
 function installSkills(project, force) {
-  for (const target of targets) {
-    const targetRoot = join(project, target, "skills");
-    mkdirSync(targetRoot, { recursive: true });
+  // One skill per iteration; add new skills to this list
+  const skills = ["project-conventions"];
 
-    for (const skill of ["project-conventions"]) {
-      const source = join(skillsRoot, skill);
-      const destination = join(targetRoot, skill);
-      const marker = join(destination, ".team-skills.json");
-      if (existsSync(destination) && !existsSync(marker) && !force) {
+  for (const skill of skills) {
+    const source = join(skillsRoot, skill);
+
+    // ── Physical install (single source of truth) ──
+    const physicalRoot = join(project, PHYSICAL_TARGET, "skills");
+    const physicalDest = join(physicalRoot, skill);
+    const marker = join(physicalDest, ".team-skills.json");
+
+    mkdirSync(physicalRoot, { recursive: true });
+
+    if (existsSync(physicalDest) && !existsSync(marker) && !force) {
+      throw new Error(
+        `Refusing to replace unmanaged skill at ${physicalDest}. Re-run with --force only if it is safe to replace.`,
+      );
+    }
+    rmSync(physicalDest, { recursive: true, force: true });
+    cpSync(source, physicalDest, { recursive: true });
+    writeFileSync(
+      marker,
+      `${JSON.stringify({ package: "@fort-wayne-ai/team-skills", version: "0.2.0", skill }, null, 2)}\n`,
+      "utf8",
+    );
+    console.log(`Installed ${skill} → ${resolve(physicalDest)}`);
+
+    // ── Symlinks for other agent directories ──
+    for (const target of targets.slice(1)) {
+      const linkRoot = join(project, target, "skills");
+      const linkDest = join(linkRoot, skill);
+      const linkMarker = join(linkDest, ".team-skills.json");
+      const relativePath = relative(dirname(linkDest), physicalDest);
+
+      mkdirSync(linkRoot, { recursive: true });
+
+      if (existsSync(linkDest) && !existsSync(linkMarker) && !force) {
         throw new Error(
-          `Refusing to replace unmanaged skill at ${destination}. Re-run with --force only if it is safe to replace.`,
+          `Refusing to replace unmanaged skill at ${linkDest}. Re-run with --force only if it is safe to replace.`,
         );
       }
-      rmSync(destination, { recursive: true, force: true });
-      cpSync(source, destination, { recursive: true });
-      writeFileSync(
-        marker,
-        `${JSON.stringify({ package: "@fort-wayne-ai/team-skills", version: "0.1.0", skill }, null, 2)}\n`,
-        "utf8",
-      );
-      console.log(`Installed ${skill} → ${resolve(destination)}`);
+      rmSync(linkDest, { recursive: true, force: true });
+      symlinkSync(relativePath, linkDest, "dir");
+      console.log(`Linked ${skill} → ${resolve(linkDest)} -> ${relativePath}`);
     }
   }
+
   writeManagedPointer(project);
   console.log(`Updated ${join(project, "AGENTS.md")}`);
 }

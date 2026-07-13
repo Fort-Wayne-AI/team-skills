@@ -9,7 +9,7 @@ npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.1.0
 npx team-skills setup
 ```
 
-`setup` copies each supported skill into `.agents/skills/`, `.claude/skills/`, and `.hermes/skills/` in the current project and adds a managed pointer to `AGENTS.md`. No external services, tokens, or network access are required.
+`setup` installs each skill physically into `.agents/skills/` (single source of truth) and creates symlinks from `.claude/skills/` and `.hermes/skills/` pointing back to `.agents/skills/`. It also adds a managed pointer to `AGENTS.md`. No external services, tokens, or network access are required.
 
 ## Commands
 
@@ -19,7 +19,7 @@ npx team-skills setup [--project <path>] [--force]
 
 ### `setup`
 
-Copies the bundled skill files (raw Markdown) into the consumer project's agent skill directories. Files are read directly from disk — no Notion, no authentication, no network calls.
+Copies each bundled skill (raw Markdown) into the consumer project's `.agents/skills/` directory, then symlinks `.claude/skills/` and `.hermes/skills/` to point at `.agents/skills/`. Files are read directly from disk — no Notion, no authentication, no network calls.
 
 | Flag | Purpose |
 |---|---|
