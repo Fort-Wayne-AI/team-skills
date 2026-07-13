@@ -12,11 +12,7 @@
     "skills/",
     "templates/"
   ],
-  "dependencies": {
-    "ntn": "^0.19.0"
-  },
   "scripts": {
-    "ntn": "ntn",
     "test": "node --test test/**/*.test.mjs",
     "postinstall": "echo 'Team skills installed. Run `npx team-skills setup` from a consumer project.'"
   },

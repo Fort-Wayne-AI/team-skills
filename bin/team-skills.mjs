@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -16,19 +15,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "..");
 const skillsRoot = join(packageRoot, "skills");
 const pointerTemplate = readFileSync(join(packageRoot, "templates", "agents-pointer.md"), "utf8");
-const notionPageId = "39b47eb592be8085a79bf50afd7d6da1";
 const targets = [".agents", ".claude", ".hermes"];
 
 function usage(error) {
   const message = `Usage:
-  team-skills setup [--project <path>] [--skip-auth] [--force]
-  team-skills doctor
-  team-skills read-shared-understanding [--dry-run]
+  team-skills setup [--project <path>] [--force]
 
 Commands:
-  setup                       Copy project-local skills and authorize Notion access.
-  doctor                      Check the bundled Notion CLI and local authorization.
-  read-shared-understanding   Print the live shared conventions document as Markdown.`;
+  setup   Copy project-local agent skills into the current project.`;
   console[error ? "error" : "log"](message);
   process.exitCode = error ? 1 : 0;
 }
@@ -39,23 +33,6 @@ function optionValue(args, option) {
   const value = args[index + 1];
   if (!value || value.startsWith("--")) throw new Error(`${option} requires a path.`);
   return value;
-}
-
-function ntn(args, options = {}) {
-  const executable = join(packageRoot, "node_modules", ".bin", "ntn");
-  if (!existsSync(executable)) {
-    throw new Error("Bundled Notion CLI is missing. Reinstall @fort-wayne-ai/team-skills.");
-  }
-  return spawnSync(executable, args, {
-    cwd: options.cwd ?? process.cwd(),
-    encoding: "utf8",
-    stdio: options.stdio ?? "pipe",
-  });
-}
-
-function isAuthenticated() {
-  const result = ntn(["api", "v1/users/me"]);
-  return result.status === 0;
 }
 
 function writeManagedPointer(project) {
@@ -76,7 +53,7 @@ function installSkills(project, force) {
     const targetRoot = join(project, target, "skills");
     mkdirSync(targetRoot, { recursive: true });
 
-    for (const skill of ["shared-understanding"]) {
+    for (const skill of ["project-conventions"]) {
       const source = join(skillsRoot, skill);
       const destination = join(targetRoot, skill);
       const marker = join(destination, ".team-skills.json");
@@ -101,44 +78,11 @@ function installSkills(project, force) {
 
 function setup(args) {
   const project = resolve(optionValue(args, "--project") ?? process.cwd());
-  const skipAuth = args.includes("--skip-auth");
   const force = args.includes("--force");
   if (!existsSync(project)) throw new Error(`Project directory does not exist: ${project}`);
 
   installSkills(project, force);
-  if (skipAuth) {
-    console.log("Skipped Notion authorization (--skip-auth).");
-    return;
-  }
-
-  if (isAuthenticated()) {
-    console.log("Notion authorization verified.");
-    return;
-  }
-
-  console.log("Notion authorization is required to read the shared conventions. Starting Notion's official login flow…");
-  const login = ntn(["login"], { cwd: project, stdio: "inherit" });
-  if (login.status !== 0 || !isAuthenticated()) {
-    throw new Error("Notion authorization was not verified. Re-run `npx team-skills setup` in an interactive terminal, or provide NOTION_API_TOKEN outside the repository.");
-  }
-  console.log("Notion authorization verified.");
-}
-
-function doctor() {
-  const result = ntn(["doctor"], { stdio: "inherit" });
-  if (result.status !== 0) process.exitCode = result.status ?? 1;
-}
-
-function readSharedUnderstanding(args) {
-  const command = `ntn pages get ${notionPageId}`;
-  if (args.includes("--dry-run")) {
-    console.log(command);
-    return;
-  }
-  const result = ntn(["pages", "get", notionPageId], { stdio: "inherit" });
-  if (result.status !== 0) {
-    process.exitCode = result.status ?? 1;
-  }
+  console.log("Done. Skills are ready for local use.");
 }
 
 try {
@@ -147,10 +91,6 @@ try {
     usage(false);
   } else if (command === "setup") {
     setup(args);
-  } else if (command === "doctor") {
-    doctor();
-  } else if (command === "read-shared-understanding") {
-    readSharedUnderstanding(args);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }

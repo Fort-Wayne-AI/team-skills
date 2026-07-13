@@ -3,7 +3,7 @@
 
 This project uses project-local shared skills installed by `@fort-wayne-ai/team-skills`.
 
-- `shared-understanding` — read the team's current conventions before relevant setup, planning, release, or versioning work.
+- `project-conventions` — versioning, naming, documentation, and release standards for Fort Wayne AI projects.
 
-Run `npx --no-install team-skills read-shared-understanding` to retrieve those conventions after local Notion authorization.
+The skill files live at `.agents/skills/`, `.claude/skills/`, and `.hermes/skills/` and are read directly from disk — no external service required.
 <!-- team-skills:end -->
