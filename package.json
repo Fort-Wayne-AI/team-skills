@@ -1,13 +1,26 @@
 {
-  "name": "team-skills",
+  "name": "@fort-wayne-ai/team-skills",
+  "version": "0.1.0",
   "private": true,
-  "description": "Shared CLI tooling and skills for Fort Wayne AI",
+  "description": "Shared, project-local agent skills for Fort Wayne AI",
   "type": "module",
+  "bin": {
+    "team-skills": "./bin/team-skills.mjs"
+  },
+  "files": [
+    "bin/",
+    "skills/",
+    "templates/"
+  ],
   "dependencies": {
     "ntn": "^0.19.0"
   },
   "scripts": {
     "ntn": "ntn",
-    "postinstall": "echo 'Team skills installed. Run `npm run ntn -- --version` to verify.'"
+    "test": "node --test test/**/*.test.mjs",
+    "postinstall": "echo 'Team skills installed. Run `npx team-skills setup` from a consumer project.'"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
