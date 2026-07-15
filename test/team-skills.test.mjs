@@ -16,29 +16,84 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       encoding: "utf8",
     });
 
-    // ── .agents: physical copy ──
-    const physicalDir = join(project, ".agents", "skills", "project-conventions");
-    assert.equal(existsSync(physicalDir), true, ".agents copy should exist");
-    assert.equal(lstatSync(physicalDir).isSymbolicLink(), false, ".agents should NOT be a symlink");
-    assert.match(
-      readFileSync(join(physicalDir, "SKILL.md"), "utf8"),
-      /name: project-conventions/,
-    );
+    for (const skill of ["project-conventions", "software-development-lifecycle"]) {
+      // ── .agents: physical copy ──
+      const physicalDir = join(project, ".agents", "skills", skill);
+      assert.equal(existsSync(physicalDir), true, `${skill} .agents copy should exist`);
+      assert.equal(
+        lstatSync(physicalDir).isSymbolicLink(),
+        false,
+        `${skill} .agents copy should NOT be a symlink`,
+      );
+      assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
+      assert.deepEqual(
+        JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
+        { package: "@fort-wayne-ai/team-skills", version: "0.3.0", skill },
+      );
 
-    // ── .claude and .hermes: symlinks ──
-    for (const directory of [".claude", ".hermes"]) {
-      const linkDir = join(project, directory, "skills", "project-conventions");
-      const SkillFile = join(linkDir, "SKILL.md");
-      assert.equal(existsSync(linkDir), true, `${directory} link target should exist`);
-      assert.equal(lstatSync(linkDir).isSymbolicLink(), true, `${directory} should be a symlink`);
-      assert.match(readFileSync(SkillFile, "utf8"), /name: project-conventions/);
+      // ── .claude and .hermes: symlinks ──
+      for (const directory of [".claude", ".hermes"]) {
+        const linkDir = join(project, directory, "skills", skill);
+        const skillFile = join(linkDir, "SKILL.md");
+        assert.equal(existsSync(linkDir), true, `${skill} ${directory} link target should exist`);
+        assert.equal(
+          lstatSync(linkDir).isSymbolicLink(),
+          true,
+          `${skill} ${directory} should be a symlink`,
+        );
+        assert.match(readFileSync(skillFile, "utf8"), new RegExp(`name: ${skill}`));
+      }
     }
 
     // ── AGENTS.md pointer ──
     const instructions = readFileSync(join(project, "AGENTS.md"), "utf8");
     assert.match(instructions, /<!-- team-skills:start -->/);
     assert.match(instructions, /project-conventions/);
+    assert.match(instructions, /software-development-lifecycle/);
   } finally {
     rmSync(project, { recursive: true, force: true });
   }
+});
+
+test("CI runs for PR creation, reopened PRs, open-PR commits, and main", () => {
+  const workflow = readFileSync(join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
+
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /types: \[opened, reopened, synchronize, ready_for_review\]/);
+  assert.match(workflow, /push:\n\s+branches: \[main\]/);
+  assert.match(workflow, /run: npm test/);
+  assert.match(workflow, /run: npm pack --dry-run/);
+});
+
+test("lifecycle skill summarizes policy while reference owns deployment detail", () => {
+  const skill = readFileSync(
+    join(repoRoot, "skills", "software-development-lifecycle", "SKILL.md"),
+    "utf8",
+  );
+  const reference = readFileSync(
+    join(repoRoot, "skills", "software-development-lifecycle", "REFERENCE.md"),
+    "utf8",
+  );
+
+  // SKILL.md stays concise and points to the detailed operating procedure.
+  assert.match(skill, /Use \[REFERENCE\.md\]\(REFERENCE\.md\) for commands and detailed checklists/);
+  assert.match(skill, /fresh Preview for every deployable PR and push/);
+  assert.match(skill, /Preview-scoped test data and sandbox services/);
+  assert.match(skill, /Test staged Production with read-only smoke checks/);
+  assert.match(skill, /manually promote that same artifact/);
+  assert.doesNotMatch(skill, /## Preview environments/);
+  assert.doesNotMatch(skill, /## Release and deployment/);
+
+  // REFERENCE.md contains the detailed, testable Vercel procedure.
+  assert.match(reference, /disable \*\*Auto-assign Custom Production Domains\*\*/);
+  assert.match(reference, /full applicable functional test suite, including safe write paths/);
+  assert.match(reference, /must not have credentials capable of sending real email/);
+  assert.match(
+    reference,
+    /public production domains continue serving the previous \*\*Current\*\* deployment/,
+  );
+  assert.match(reference, /do not perform test writes or other side effects/);
+  assert.match(reference, /without rebuilding, so the tested artifact becomes Current/);
+  assert.match(reference, /public production domains now serve the promoted deployment and exact release SHA/);
+  assert.match(reference, /rollback target/);
 });

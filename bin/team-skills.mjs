@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "..");
+const packageMetadata = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 const skillsRoot = join(packageRoot, "skills");
 const pointerTemplate = readFileSync(join(packageRoot, "templates", "agents-pointer.md"), "utf8");
 const targets = [".agents", ".claude", ".hermes"];
@@ -54,7 +55,7 @@ function writeManagedPointer(project) {
 
 function installSkills(project, force) {
   // One skill per iteration; add new skills to this list
-  const skills = ["project-conventions"];
+  const skills = ["project-conventions", "software-development-lifecycle"];
 
   for (const skill of skills) {
     const source = join(skillsRoot, skill);
@@ -75,7 +76,7 @@ function installSkills(project, force) {
     cpSync(source, physicalDest, { recursive: true });
     writeFileSync(
       marker,
-      `${JSON.stringify({ package: "@fort-wayne-ai/team-skills", version: "0.2.0", skill }, null, 2)}\n`,
+      `${JSON.stringify({ package: packageMetadata.name, version: packageMetadata.version, skill }, null, 2)}\n`,
       "utf8",
     );
     console.log(`Installed ${skill} → ${resolve(physicalDest)}`);
