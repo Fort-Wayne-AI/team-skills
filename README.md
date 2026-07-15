@@ -5,7 +5,7 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 ## Install in a consumer project
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.3.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.2.0
 npx team-skills setup
 ```
 
