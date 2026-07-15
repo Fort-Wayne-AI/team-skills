@@ -5,7 +5,7 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 ## Install in a consumer project
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.1.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.3.0
 npx team-skills setup
 ```
 
@@ -31,6 +31,10 @@ Copies each bundled skill (raw Markdown) into the consumer project's `.agents/sk
 ### `project-conventions`
 
 Versioning, naming, documentation, and release standards for every Fort Wayne AI project. Installed as plain Markdown — agents read it locally.
+
+### `software-development-lifecycle`
+
+Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, required CI behavior, and deliberate manual releases and deployments.
 
 ## Development
 
