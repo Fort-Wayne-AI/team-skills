@@ -117,30 +117,31 @@ When a PR changes:
 
 ## Preview validation checklist
 
-- Confirm the deployment is a Preview/non-production environment and corresponds to the PR's current head commit.
+- Require a fresh Preview for every deployable PR and confirm it corresponds to the PR's current head SHA. A missing Preview blocks merge.
 - Record or link the commit-specific preview URL in the PR; do not rely only on a mutable branch URL.
-- Confirm preview variables and integrations are intentionally scoped. Prefer dedicated non-production data stores and sandbox accounts.
+- Confirm Preview-scoped credentials use dedicated non-production data stores and sandbox accounts.
 - Exercise full functional behavior, including writes, against disposable or test data and sandbox integrations.
-- Do not send real email, charge payments, invoke production webhooks, run production cron/sync jobs, or mutate production data from a Preview.
+- A Preview must not have credentials capable of sending real email, charging live accounts, invoking production webhooks or jobs, or mutating production data.
 - Test the acceptance criteria and affected critical paths in a real browser or through the deployed API.
 - Exercise authentication redirects and provider callback URLs when auth behavior changes.
 - Inspect deployment/build logs and runtime errors, not only the rendered page.
-- After a new push, verify the preview and CI both correspond to the new head SHA and repeat affected checks.
+- After every push, verify the new Preview and CI both correspond to the new head SHA, then rerun the full applicable functional test suite, including safe write paths.
 
 ### Vercel example
 
-With Vercel's Git integration, pushes to non-production branches and PRs normally create Preview deployments automatically. Vercel provides a branch URL that moves to the latest deployment and a commit-specific URL that identifies immutable review evidence.
+Configure Vercel's Git integration so every deployable PR and every subsequent push creates a fresh Preview deployment. Treat a missing Preview as a merge-blocking workflow failure. Vercel provides a branch URL that moves to the latest deployment and a commit-specific URL that identifies immutable review evidence.
 
 For deliberate manual releases, prefer Vercel's **staged Production deployment** workflow:
 
 1. In **Project Settings → Environments → Production → Branch Tracking**, disable **Auto-assign Custom Production Domains**.
 2. Merges or pushes to the production branch still build with Production environment variables, but the deployment remains **Staged** and the public production domains continue serving the previous **Current** deployment.
 3. Inspect the staged deployment and confirm its Git SHA exactly matches the selected release commit.
-4. Test the generated staged URL with controlled, normally read-only smoke checks. It may use live Production data and integrations, so side effects require explicit authorization and a reversible plan.
+4. Test the generated staged URL only with controlled, read-only smoke checks. It uses Production configuration and may reach live data and integrations; do not perform test writes or other side effects.
 5. Create the release/tag for that exact tested SHA and record the existing Current deployment as the rollback target.
 6. When approved, promote that exact staged deployment. Vercel assigns the production domains without rebuilding, so the tested artifact becomes Current.
+7. Verify the public production domains now serve the promoted deployment and exact release SHA, run production health and critical read-only smoke checks, and retain the previously Current deployment as the rollback target.
 
-The Git-integrated staged build from the selected `main` commit is preferred. If creating one with the CLI, first use a clean worktree checked out at the exact release commit, then verify the resulting deployment SHA before testing or promotion:
+Use the Git-integrated staged Production deployment created from the selected `main` commit. CLI creation is an exceptional recovery path only; it must use a clean worktree at the exact release SHA and does not replace verification of deployment provenance:
 
 ```bash
 git status --short --branch
@@ -165,12 +166,12 @@ Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tok
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
 - Create or identify a release-candidate deployment for the exact release commit and complete smoke tests. Prefer a staged Production deployment when available.
-- Default staged Production testing to read-only checks; authorize and plan any live side effect explicitly.
+- Run only controlled, read-only staged Production checks; do not perform test writes or other side effects.
 - Record the existing Current production deployment as the rollback target.
 - Create the tag/release manually; verify the tag points to the exact tested commit.
 - Promote the exact tested staged artifact, or deploy through the documented manual mechanism, and capture the deployed version.
 - Confirm changing production traffic requires an explicit promotion or approval; automatic Preview and staged Production builds are acceptable.
-- Perform post-deploy health checks and critical user-journey smoke tests.
+- Verify the public production domains serve the promoted deployment and exact release SHA, then perform health checks and critical read-only smoke tests.
 - Monitor errors and have a tested rollback or remediation path.
 
 Do not create a release or deploy solely because a PR merged. The responsible developer chooses the batch, timing, notes, and deployment window.

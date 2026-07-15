@@ -14,7 +14,7 @@ Follow this process for every code or configuration change. Also load `project-c
 - Review the complete diff and fix discovered issues before opening a PR.
 - Target PRs to `main` unless the change is intentionally stacked on an unmerged parent PR.
 - Require CI on PR creation and every new commit while the PR is open. Do not merge failing, missing, or stale CI.
-- Use deploy previews for runtime or user-facing changes when the hosting platform supports them. Test the preview for the current commit before merge.
+- Every deployable PR must receive a Preview deployment from the configured hosting platform. Treat a missing Preview as a merge-blocking workflow failure.
 - Merging does not automatically authorize a release or a change to production traffic.
 - Releases and production traffic promotions are deliberate, manual developer decisions.
 - Automatic Preview and staged Production builds are allowed; changing production traffic to a new release must require an explicit developer promotion or approval.
@@ -28,7 +28,7 @@ Follow this process for every code or configuration change. Also load `project-c
 5. **Verify locally.** Run the repository's required formatter, linter, type checks, tests, build, and relevant smoke tests.
 6. **Review and fix.** Inspect the full base-to-head diff for correctness, security, privacy, regressions, maintainability, test gaps, and accidental files. Fix findings and rerun affected checks.
 7. **Open the PR.** Push the branch and create a PR with summary, rationale, validation evidence, risks, rollout notes, and release-note impact.
-8. **Pass CI, preview validation, and review.** Confirm CI and the deploy preview represent the PR's current commit. Test affected behavior on the preview, address failures and review feedback, then re-review changed code.
+8. **Pass CI, Preview validation, and review.** Confirm CI and the Preview represent the PR's current head SHA. Complete the applicable functional test suite, including safe test writes, address failures and review feedback, then re-review changed code. After every push, repeat this gate for the new head SHA.
 9. **Merge when ready.** Merge only with required approvals and current green CI. Prefer the repository's documented merge strategy.
 10. **Clean up.** Remove the merged worktree and delete obsolete local/remote branches according to repository policy.
 
@@ -48,12 +48,12 @@ If CI is absent or does not rerun for open-PR commits, treat that as a workflow 
 
 ## Preview environments
 
-- A Preview is a non-production deployment for testing a branch or PR. It is not a production release, and it is only isolated from production data and side effects when its configuration makes that true.
+- A Preview is a non-production deployment for full functional testing of a branch or PR. It is not a production release.
 - Prefer a commit-specific preview URL for approval evidence; a branch URL can move after another push.
-- Scope Preview environment variables separately from Production. Use non-production databases, storage, email, payment, webhook, and other external services whenever practical.
-- Use the Preview for full functional testing, including write paths against disposable or test data. Disable or sandbox actions that could mutate production data, contact real users, run production jobs, or invoke live/billable integrations.
+- Configure Preview-scoped credentials for dedicated non-production databases, storage, email, payment, webhook, and other sandbox services.
+- A Preview must not use credentials capable of mutating production data, contacting real users, invoking production webhooks or jobs, or charging live accounts. Exercise write paths only against disposable test data and sandbox services.
 - Validate the affected user journeys, authentication/callback behavior, data migrations or compatibility, responsive UI, and runtime logs as appropriate to the change.
-- After each pushed fix, confirm both CI and the preview deployment succeeded for the new head commit, then repeat affected tests.
+- After every push, verify that CI and the new Preview both correspond to the new head SHA, then rerun the full applicable functional test suite, including safe write paths.
 
 ## Release and deployment
 
@@ -65,11 +65,11 @@ For each release:
 2. Assemble human-readable release notes, including notable fixes, breaking changes, migrations, configuration changes, and known limitations.
 3. Confirm `main` is green and identify the exact release commit.
 4. Create or select a release-candidate deployment for that exact commit. Prefer a staged Production deployment when the platform supports one, because it uses production configuration without serving production traffic; otherwise use an isolated Preview or staging environment.
-5. Run controlled release-candidate smoke tests and inspect runtime errors. Because a staged Production deployment may use live services and data, default to read-only checks and perform side effects only when explicitly authorized and safely reversible.
+5. Run only controlled, read-only release-candidate smoke tests and inspect runtime errors. Because a staged Production deployment uses Production configuration and may reach live services and data, do not perform test writes or other side effects there.
 6. Record the current production version or deployment as the rollback target.
 7. Create the release and tag manually for the exact tested commit using the repository's release mechanism.
 8. Promote that exact staged artifact manually, or deploy through the repository's documented manual mechanism. Do not infer a production traffic change from merge alone.
-9. Verify production health and key user journeys, record the deployed version, and be prepared to roll back or remediate.
+9. Verify the public production domains serve the promoted deployment and exact release SHA, run production health and critical read-only smoke checks, record the deployed version, and be prepared to roll back or remediate.
 
 If a hosting integration automatically assigns production domains or changes production traffic after a merge, treat that as a workflow gap and disable or gate that behavior. Automatic Preview and staged Production builds do not count as production releases or promotions.
 

@@ -75,8 +75,10 @@ test("lifecycle skill separates Preview testing from staged Production promotion
     "utf8",
   );
 
-  assert.match(skill, /full functional testing, including write paths against disposable or test data/);
-  assert.match(skill, /default to read-only checks/);
+  assert.match(skill, /full functional testing of a branch or PR/);
+  assert.match(skill, /Run only controlled, read-only release-candidate smoke tests/);
+  assert.match(skill, /Every deployable PR must receive a Preview deployment/);
+  assert.match(skill, /must not use credentials capable of mutating production data/);
   assert.match(skill, /Promote that exact staged artifact manually/);
   assert.match(reference, /disable \*\*Auto-assign Custom Production Domains\*\*/);
   assert.match(
@@ -84,5 +86,6 @@ test("lifecycle skill separates Preview testing from staged Production promotion
     /public production domains continue serving the previous \*\*Current\*\* deployment/,
   );
   assert.match(reference, /without rebuilding, so the tested artifact becomes Current/);
+  assert.match(reference, /public production domains now serve the promoted deployment and exact release SHA/);
   assert.match(reference, /rollback target/);
 });
