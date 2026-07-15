@@ -64,8 +64,8 @@ For each release:
 1. Select the exact merged changes and version according to `project-conventions`.
 2. Assemble human-readable release notes, including notable fixes, breaking changes, migrations, configuration changes, and known limitations.
 3. Confirm `main` is green and identify the exact release commit.
-4. Create or select a preview deployment for that exact release commit. For a batched release, a short-lived `release/vX.Y.Z` branch from the selected `main` commit is a common way to obtain a stable release-candidate preview.
-5. Run release-candidate smoke tests and inspect runtime errors using preview-safe configuration.
+4. Create or select a release-candidate deployment for that exact commit. Prefer a staged Production deployment when the platform supports one, because it uses production configuration without serving production traffic; otherwise use an isolated preview or staging environment.
+5. Run release-candidate smoke tests and inspect runtime errors. Confirm the candidate's code, configuration, migrations, and external dependencies match the intended production release as closely as practical.
 6. Create the release manually using the repository's release mechanism.
 7. Deploy or promote manually to the intended environment; do not infer deployment from merge alone.
 8. Verify production health and key user journeys, record the deployed version, and be prepared to roll back or remediate.

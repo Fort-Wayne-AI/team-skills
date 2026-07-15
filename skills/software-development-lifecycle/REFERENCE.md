@@ -130,23 +130,25 @@ When a PR changes:
 
 With Vercel's Git integration, pushes to non-production branches and PRs normally create Preview deployments automatically. Vercel provides a branch URL that moves to the latest deployment and a commit-specific URL that identifies immutable review evidence.
 
-For a batched manual release, create a short-lived release candidate from the chosen `main` commit:
+For deliberate manual releases, prefer Vercel's **staged Production deployment** workflow:
+
+1. In **Project Settings → Environments → Production → Branch Tracking**, disable **Auto-assign Custom Production Domains**.
+2. Merges or pushes to the production branch still build with Production environment variables, but the deployment remains **Staged** and does not receive production traffic.
+3. Inspect the staged deployment, confirm its Git SHA is the selected release commit, and test it using its generated URL.
+4. When approved, promote that staged deployment. Vercel assigns the production domains without rebuilding, so the tested artifact becomes Current.
+
+For a CLI-created staged build:
 
 ```bash
-git fetch origin
-git worktree add -b release/v1.2.0 ../worktrees/project-release-v1.2.0 <release-commit-sha>
-git -C ../worktrees/project-release-v1.2.0 push -u origin release/v1.2.0
-```
-
-Test the resulting Preview deployment. Before promotion, inspect it and confirm its Git commit matches the selected release commit. Vercel promotion rebuilds with Production environment variables, so production still requires post-deploy verification even after the Preview passed.
-
-```bash
-vercel inspect <preview-deployment-url>
-vercel curl / --deployment <preview-deployment-url>
-vercel logs --deployment <preview-deployment-url> --level error --limit 50
-vercel promote <preview-deployment-url>
+vercel --prod --skip-domain
+vercel inspect <staged-deployment-url>
+vercel curl / --deployment <staged-deployment-url>
+vercel logs --deployment <staged-deployment-url> --level error --limit 50
+vercel promote <staged-deployment-url>
 vercel promote status
 ```
+
+Promoting a regular Preview is also supported, but Vercel rebuilds it using Production environment variables. Prefer a staged Production deployment for a release candidate when artifact parity matters.
 
 Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tokens in chat or commit project-link credentials.
 
@@ -157,7 +159,7 @@ Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tok
 - Draft notes from merged behavior, not commit titles alone.
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
-- Create or identify a Preview for the exact release commit and complete release-candidate smoke tests.
+- Create or identify a release-candidate deployment for the exact release commit and complete smoke tests. Prefer a staged Production deployment when available.
 - Create the tag/release manually; verify the tag points to the intended commit.
 - Deploy manually to the named environment and capture the deployed version.
 - Confirm the production host requires an explicit deploy or promotion action; automatic PR previews are acceptable.
