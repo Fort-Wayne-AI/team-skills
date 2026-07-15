@@ -115,6 +115,41 @@ When a PR changes:
 4. Resolve review threads only after the concern is actually addressed.
 5. Confirm approvals and required checks are still current before merge.
 
+## Preview validation checklist
+
+- Confirm the deployment is a Preview/non-production environment and corresponds to the PR's current head commit.
+- Record or link the commit-specific preview URL in the PR; do not rely only on a mutable branch URL.
+- Confirm preview variables and integrations are intentionally scoped. Prefer dedicated non-production data stores and sandbox accounts.
+- Do not send real email, charge payments, invoke production webhooks, run production cron/sync jobs, or mutate production data unless the test explicitly requires and authorizes it.
+- Test the acceptance criteria and affected critical paths in a real browser or through the deployed API.
+- Exercise authentication redirects and provider callback URLs when auth behavior changes.
+- Inspect deployment/build logs and runtime errors, not only the rendered page.
+- After a new push, verify the preview and CI both correspond to the new head SHA and repeat affected checks.
+
+### Vercel example
+
+With Vercel's Git integration, pushes to non-production branches and PRs normally create Preview deployments automatically. Vercel provides a branch URL that moves to the latest deployment and a commit-specific URL that identifies immutable review evidence.
+
+For a batched manual release, create a short-lived release candidate from the chosen `main` commit:
+
+```bash
+git fetch origin
+git worktree add -b release/v1.2.0 ../worktrees/project-release-v1.2.0 <release-commit-sha>
+git -C ../worktrees/project-release-v1.2.0 push -u origin release/v1.2.0
+```
+
+Test the resulting Preview deployment. Before promotion, inspect it and confirm its Git commit matches the selected release commit. Vercel promotion rebuilds with Production environment variables, so production still requires post-deploy verification even after the Preview passed.
+
+```bash
+vercel inspect <preview-deployment-url>
+vercel curl / --deployment <preview-deployment-url>
+vercel logs --deployment <preview-deployment-url> --level error --limit 50
+vercel promote <preview-deployment-url>
+vercel promote status
+```
+
+Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tokens in chat or commit project-link credentials.
+
 ## Manual release checklist
 
 - Decide which merged PRs belong together and explain exclusions when useful.
@@ -122,6 +157,7 @@ When a PR changes:
 - Draft notes from merged behavior, not commit titles alone.
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
+- Create or identify a Preview for the exact release commit and complete release-candidate smoke tests.
 - Create the tag/release manually; verify the tag points to the intended commit.
 - Deploy manually to the named environment and capture the deployed version.
 - Confirm the production host requires an explicit deploy or promotion action; automatic PR previews are acceptable.
