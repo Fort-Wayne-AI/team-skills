@@ -120,7 +120,8 @@ When a PR changes:
 - Confirm the deployment is a Preview/non-production environment and corresponds to the PR's current head commit.
 - Record or link the commit-specific preview URL in the PR; do not rely only on a mutable branch URL.
 - Confirm preview variables and integrations are intentionally scoped. Prefer dedicated non-production data stores and sandbox accounts.
-- Do not send real email, charge payments, invoke production webhooks, run production cron/sync jobs, or mutate production data unless the test explicitly requires and authorizes it.
+- Exercise full functional behavior, including writes, against disposable or test data and sandbox integrations.
+- Do not send real email, charge payments, invoke production webhooks, run production cron/sync jobs, or mutate production data from a Preview.
 - Test the acceptance criteria and affected critical paths in a real browser or through the deployed API.
 - Exercise authentication redirects and provider callback URLs when auth behavior changes.
 - Inspect deployment/build logs and runtime errors, not only the rendered page.
@@ -133,13 +134,17 @@ With Vercel's Git integration, pushes to non-production branches and PRs normall
 For deliberate manual releases, prefer Vercel's **staged Production deployment** workflow:
 
 1. In **Project Settings → Environments → Production → Branch Tracking**, disable **Auto-assign Custom Production Domains**.
-2. Merges or pushes to the production branch still build with Production environment variables, but the deployment remains **Staged** and does not receive production traffic.
-3. Inspect the staged deployment, confirm its Git SHA is the selected release commit, and test it using its generated URL.
-4. When approved, promote that staged deployment. Vercel assigns the production domains without rebuilding, so the tested artifact becomes Current.
+2. Merges or pushes to the production branch still build with Production environment variables, but the deployment remains **Staged** and the public production domains continue serving the previous **Current** deployment.
+3. Inspect the staged deployment and confirm its Git SHA exactly matches the selected release commit.
+4. Test the generated staged URL with controlled, normally read-only smoke checks. It may use live Production data and integrations, so side effects require explicit authorization and a reversible plan.
+5. Create the release/tag for that exact tested SHA and record the existing Current deployment as the rollback target.
+6. When approved, promote that exact staged deployment. Vercel assigns the production domains without rebuilding, so the tested artifact becomes Current.
 
-For a CLI-created staged build:
+The Git-integrated staged build from the selected `main` commit is preferred. If creating one with the CLI, first use a clean worktree checked out at the exact release commit, then verify the resulting deployment SHA before testing or promotion:
 
 ```bash
+git status --short --branch
+git rev-parse HEAD
 vercel --prod --skip-domain
 vercel inspect <staged-deployment-url>
 vercel curl / --deployment <staged-deployment-url>
@@ -160,9 +165,11 @@ Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tok
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
 - Create or identify a release-candidate deployment for the exact release commit and complete smoke tests. Prefer a staged Production deployment when available.
-- Create the tag/release manually; verify the tag points to the intended commit.
-- Deploy manually to the named environment and capture the deployed version.
-- Confirm the production host requires an explicit deploy or promotion action; automatic PR previews are acceptable.
+- Default staged Production testing to read-only checks; authorize and plan any live side effect explicitly.
+- Record the existing Current production deployment as the rollback target.
+- Create the tag/release manually; verify the tag points to the exact tested commit.
+- Promote the exact tested staged artifact, or deploy through the documented manual mechanism, and capture the deployed version.
+- Confirm changing production traffic requires an explicit promotion or approval; automatic Preview and staged Production builds are acceptable.
 - Perform post-deploy health checks and critical user-journey smoke tests.
 - Monitor errors and have a tested rollback or remediation path.
 

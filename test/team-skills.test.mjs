@@ -64,3 +64,25 @@ test("CI runs for PR creation, reopened PRs, open-PR commits, and main", () => {
   assert.match(workflow, /run: npm test/);
   assert.match(workflow, /run: npm pack --dry-run/);
 });
+
+test("lifecycle skill separates Preview testing from staged Production promotion", () => {
+  const skill = readFileSync(
+    join(repoRoot, "skills", "software-development-lifecycle", "SKILL.md"),
+    "utf8",
+  );
+  const reference = readFileSync(
+    join(repoRoot, "skills", "software-development-lifecycle", "REFERENCE.md"),
+    "utf8",
+  );
+
+  assert.match(skill, /full functional testing, including write paths against disposable or test data/);
+  assert.match(skill, /default to read-only checks/);
+  assert.match(skill, /Promote that exact staged artifact manually/);
+  assert.match(reference, /disable \*\*Auto-assign Custom Production Domains\*\*/);
+  assert.match(
+    reference,
+    /public production domains continue serving the previous \*\*Current\*\* deployment/,
+  );
+  assert.match(reference, /without rebuilding, so the tested artifact becomes Current/);
+  assert.match(reference, /rollback target/);
+});

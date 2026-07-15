@@ -15,9 +15,9 @@ Follow this process for every code or configuration change. Also load `project-c
 - Target PRs to `main` unless the change is intentionally stacked on an unmerged parent PR.
 - Require CI on PR creation and every new commit while the PR is open. Do not merge failing, missing, or stale CI.
 - Use deploy previews for runtime or user-facing changes when the hosting platform supports them. Test the preview for the current commit before merge.
-- Merging does not automatically authorize a release or production deployment.
-- Releases and production deployments are deliberate, manual developer decisions.
-- Automatic preview environments are allowed; production deployment must require an explicit developer action or approval.
+- Merging does not automatically authorize a release or a change to production traffic.
+- Releases and production traffic promotions are deliberate, manual developer decisions.
+- Automatic Preview and staged Production builds are allowed; changing production traffic to a new release must require an explicit developer promotion or approval.
 
 ## Change workflow
 
@@ -48,10 +48,10 @@ If CI is absent or does not rerun for open-PR commits, treat that as a workflow 
 
 ## Preview environments
 
-- A preview is an isolated, non-production deployment for testing a branch or PR. It is not a production release.
+- A Preview is a non-production deployment for testing a branch or PR. It is not a production release, and it is only isolated from production data and side effects when its configuration makes that true.
 - Prefer a commit-specific preview URL for approval evidence; a branch URL can move after another push.
-- Scope preview environment variables separately from production. Use non-production databases, storage, email, payment, webhook, and other external services whenever practical.
-- Disable, sandbox, or explicitly authorize preview actions that can mutate production data, contact real users, run scheduled jobs, or invoke billable integrations.
+- Scope Preview environment variables separately from Production. Use non-production databases, storage, email, payment, webhook, and other external services whenever practical.
+- Use the Preview for full functional testing, including write paths against disposable or test data. Disable or sandbox actions that could mutate production data, contact real users, run production jobs, or invoke live/billable integrations.
 - Validate the affected user journeys, authentication/callback behavior, data migrations or compatibility, responsive UI, and runtime logs as appropriate to the change.
 - After each pushed fix, confirm both CI and the preview deployment succeeded for the new head commit, then repeat affected tests.
 
@@ -64,12 +64,13 @@ For each release:
 1. Select the exact merged changes and version according to `project-conventions`.
 2. Assemble human-readable release notes, including notable fixes, breaking changes, migrations, configuration changes, and known limitations.
 3. Confirm `main` is green and identify the exact release commit.
-4. Create or select a release-candidate deployment for that exact commit. Prefer a staged Production deployment when the platform supports one, because it uses production configuration without serving production traffic; otherwise use an isolated preview or staging environment.
-5. Run release-candidate smoke tests and inspect runtime errors. Confirm the candidate's code, configuration, migrations, and external dependencies match the intended production release as closely as practical.
-6. Create the release manually using the repository's release mechanism.
-7. Deploy or promote manually to the intended environment; do not infer deployment from merge alone.
-8. Verify production health and key user journeys, record the deployed version, and be prepared to roll back or remediate.
+4. Create or select a release-candidate deployment for that exact commit. Prefer a staged Production deployment when the platform supports one, because it uses production configuration without serving production traffic; otherwise use an isolated Preview or staging environment.
+5. Run controlled release-candidate smoke tests and inspect runtime errors. Because a staged Production deployment may use live services and data, default to read-only checks and perform side effects only when explicitly authorized and safely reversible.
+6. Record the current production version or deployment as the rollback target.
+7. Create the release and tag manually for the exact tested commit using the repository's release mechanism.
+8. Promote that exact staged artifact manually, or deploy through the repository's documented manual mechanism. Do not infer a production traffic change from merge alone.
+9. Verify production health and key user journeys, record the deployed version, and be prepared to roll back or remediate.
 
-If a hosting integration automatically deploys `main` to production, treat that as a workflow gap and disable or gate it. Automatic PR preview deployments do not count as production releases.
+If a hosting integration automatically assigns production domains or changes production traffic after a merge, treat that as a workflow gap and disable or gate that behavior. Automatic Preview and staged Production builds do not count as production releases or promotions.
 
 See [REFERENCE.md](REFERENCE.md) for command examples and detailed checklists.
