@@ -4,12 +4,16 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 
 ## Install in a consumer project
 
+This is a public GitHub repository. Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
+
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.2.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.3.0
 npx team-skills setup
 ```
 
-`setup` installs each skill physically into `.agents/skills/` (single source of truth) and creates symlinks from `.claude/skills/` and `.hermes/skills/` pointing back to `.agents/skills/`. It also adds a managed pointer to `AGENTS.md`. No external services, tokens, or network access are required.
+`setup` installs each skill physically into `.agents/skills/` (single source of truth) and creates symlinks from `.claude/skills/` and `.hermes/skills/` pointing back to `.agents/skills/`. It also adds a managed pointer to `AGENTS.md`. After installation, it reads from local files and needs no external service, token, or network access.
+
+> `package.json` intentionally keeps `"private": true`: the project is distributed from public GitHub releases, not published to the npm registry.
 
 ## Commands
 
