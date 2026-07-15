@@ -65,7 +65,7 @@ test("CI runs for PR creation, reopened PRs, open-PR commits, and main", () => {
   assert.match(workflow, /run: npm pack --dry-run/);
 });
 
-test("lifecycle skill separates Preview testing from staged Production promotion", () => {
+test("lifecycle skill summarizes policy while reference owns deployment detail", () => {
   const skill = readFileSync(
     join(repoRoot, "skills", "software-development-lifecycle", "SKILL.md"),
     "utf8",
@@ -75,16 +75,24 @@ test("lifecycle skill separates Preview testing from staged Production promotion
     "utf8",
   );
 
-  assert.match(skill, /full functional testing of a branch or PR/);
-  assert.match(skill, /Run only controlled, read-only release-candidate smoke tests/);
-  assert.match(skill, /Every deployable PR must receive a Preview deployment/);
-  assert.match(skill, /must not use credentials capable of mutating production data/);
-  assert.match(skill, /Promote that exact staged artifact manually/);
+  // SKILL.md stays concise and points to the detailed operating procedure.
+  assert.match(skill, /Use \[REFERENCE\.md\]\(REFERENCE\.md\) for commands and detailed checklists/);
+  assert.match(skill, /fresh Preview for every deployable PR and push/);
+  assert.match(skill, /Preview-scoped test data and sandbox services/);
+  assert.match(skill, /Test staged Production with read-only smoke checks/);
+  assert.match(skill, /manually promote that same artifact/);
+  assert.doesNotMatch(skill, /## Preview environments/);
+  assert.doesNotMatch(skill, /## Release and deployment/);
+
+  // REFERENCE.md contains the detailed, testable Vercel procedure.
   assert.match(reference, /disable \*\*Auto-assign Custom Production Domains\*\*/);
+  assert.match(reference, /full applicable functional test suite, including safe write paths/);
+  assert.match(reference, /must not have credentials capable of sending real email/);
   assert.match(
     reference,
     /public production domains continue serving the previous \*\*Current\*\* deployment/,
   );
+  assert.match(reference, /do not perform test writes or other side effects/);
   assert.match(reference, /without rebuilding, so the tested artifact becomes Current/);
   assert.match(reference, /public production domains now serve the promoted deployment and exact release SHA/);
   assert.match(reference, /rollback target/);
