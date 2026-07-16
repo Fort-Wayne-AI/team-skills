@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
@@ -121,10 +121,17 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
   assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.4\.0/);
+  assert.match(readme, /macOS, Linux, and Windows on `x64` and `arm64`/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);
-  assert.match(notionReference, /ntn datasources resolve/);
-  assert.match(notionReference, /ntn api \/v1\/pages/);
+  assert.match(notionSkill, /npx --no-install ntn whoami/);
+  assert.doesNotMatch(notionSkill, /\n\s+ntn (?:whoami|datasources|api)/);
+  assert.match(notionReference, /npx --no-install ntn datasources resolve/);
+  assert.doesNotMatch(notionReference, /\n\s+ntn (?:whoami|datasources|api)/);
+  assert.match(notionReference, /umask 077/);
+  assert.match(notionReference, /mktemp/);
+  assert.match(notionReference, /trap 'rm -f/);
+  assert.doesNotMatch(notionReference, /\/tmp\/notion-(?:create|update)\.json/);
 
   assert.match(taskSkill, /Load `notion-cli` first/);
   assert.match(taskSkill, /73ab655f-03d8-42e0-a87f-61da3d429c46/);
@@ -140,5 +147,31 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
     "Reporter",
   ]) {
     assert.match(taskSchema, new RegExp(`\\\`${field.replace(/[()]/g, "\\$&")}\\\``));
+  }
+});
+
+test("packed consumer can invoke the documented package-local ntn command", () => {
+  const project = mkdtempSync(join(tmpdir(), "team-skills-packed-consumer-"));
+  const standardPath = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+  const npmCli = resolve(dirname(process.execPath), "../lib/node_modules/npm/bin/npm-cli.js");
+
+  try {
+    writeFileSync(join(project, "package.json"), '{"private":true}\n', "utf8");
+    execFileSync(process.execPath, [npmCli, "install", "--save-dev", repoRoot], {
+      cwd: project,
+      env: { ...process.env, PATH: standardPath },
+      stdio: "ignore",
+    });
+
+    // `npm exec --no` is npx's package-local execution mode. PATH deliberately
+    // excludes this host's Hermes bin directory, which contains a global ntn.
+    const output = execFileSync(process.execPath, [npmCli, "exec", "--no", "--", "ntn", "--version"], {
+      cwd: project,
+      env: { ...process.env, PATH: standardPath },
+      encoding: "utf8",
+    });
+    assert.match(output, /^ntn 0\.19\.0\s*$/);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
   }
 });

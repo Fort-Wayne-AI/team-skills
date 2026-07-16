@@ -42,7 +42,7 @@ Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, 
 
 ### `notion-cli`
 
-Official-CLI workflow for reading, querying, creating, and updating Notion content. Requires `NOTION_API_TOKEN`; `ntn@0.19.0` is installed as a package dependency.
+Official-CLI workflow for reading, querying, creating, and updating Notion content. Requires `NOTION_API_TOKEN`; `ntn@0.19.0` is installed as a package dependency and invoked with `npx --no-install ntn`. The bundled native CLI supports macOS, Linux, and Windows on `x64` and `arm64`.
 
 ### `task-management`
 

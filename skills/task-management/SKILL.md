@@ -5,7 +5,7 @@ description: Manage project tasks in the Fort Wayne AI Notion Tasks data source 
 
 # Task Management
 
-Load `notion-cli` first. It provides the required `ntn` dependency, `NOTION_API_TOKEN` authentication, schema-discovery procedure, and write safeguards.
+Load `notion-cli` first. It provides the required `ntn` dependency, `NOTION_API_TOKEN` authentication, schema-discovery procedure, package-local invocation, and write safeguards.
 
 ## Canonical task list
 
@@ -19,13 +19,13 @@ Project tasks live in this Notion database:
 IDs and property schema were verified on 2026-07-16. Re-fetch the schema before writes because Notion owners may change it:
 
 ```bash
-ntn api /v1/data_sources/73ab655f-03d8-42e0-a87f-61da3d429c46 --notion-version 2025-09-03
+npx --no-install ntn api /v1/data_sources/73ab655f-03d8-42e0-a87f-61da3d429c46 --notion-version 2025-09-03
 ```
 
 ## Read tasks
 
 ```bash
-ntn datasources query 73ab655f-03d8-42e0-a87f-61da3d429c46 --limit 50 --json
+npx --no-install ntn datasources query 73ab655f-03d8-42e0-a87f-61da3d429c46 --limit 50 --json
 ```
 
 Filter on the exact property names and values in [references/tasks-schema.md](references/tasks-schema.md). Paginate whenever the response says `has_more: true`.
@@ -38,4 +38,4 @@ Filter on the exact property names and values in [references/tasks-schema.md](re
 4. **Complete:** clarify whether the user means `Status = Done`, `Done = Done`, or both; normally update both for consistency and set `Completed On (auto)` only if the workspace automation does not do so.
 5. **Verify:** retrieve the returned page after every mutation and report the page ID plus the fields changed.
 
-Use `ntn api /v1/pages --docs` and the narrow payload patterns in `notion-cli` for all creates and updates. Never create test tasks in the shared list without explicit authorization.
+Use `npx --no-install ntn api /v1/pages --docs` and the narrow payload patterns in `notion-cli` for all creates and updates. Never create test tasks in the shared list without explicit authorization.
