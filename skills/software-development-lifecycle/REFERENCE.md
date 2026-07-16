@@ -17,6 +17,12 @@ For stacked work, branch the child from the parent branch instead of `origin/mai
 git worktree add -b feat/child-change ../worktrees/project-child feat/parent-change
 ```
 
+Include the task ID in the branch name when it adds context:
+
+```bash
+git worktree add -b feat/FWAI-42-short-description ../worktrees/project-FWAI-42 origin/main
+```
+
 Before making changes, verify the worktree and branch:
 
 ```bash
@@ -33,6 +39,108 @@ git fetch --prune origin
 ```
 
 Never force-remove a worktree or force-delete a branch until you have verified that no needed work would be lost.
+
+## Task integration
+
+Load `task-management` (which loads `notion-cli`) for the canonical property schema, data source IDs, and write safeguards. These commands assume `NOTION_API_TOKEN` is set in the environment.
+
+### Find a task by title or status
+
+```bash
+# List recent tasks
+npx --no-install ntn datasources query <data-source-id> --limit 30 --json
+
+# Filter by status — exact property name and value from the schema
+npx --no-install ntn datasources query <data-source-id> \
+  --filter '{"property":"Status","status":{"equals":"To Do"}}' \
+  --limit 30 --json
+
+# Filter by project relation — requires the project page ID
+npx --no-install ntn datasources query <data-source-id> \
+  --filter '{"property":"Project","relation":{"contains":"<project-page-id>"}}' \
+  --limit 30 --json
+```
+
+Paginate when `has_more` is `true`; pass the returned cursor with `--start-cursor`.
+
+### Update task status when work begins
+
+At the first commit of a new feature branch, mark the task as actively worked on:
+
+```bash
+# Retrieve the page first to see current values
+page_id="<page-id>"
+npx --no-install ntn api /v1/pages/$page_id -X GET
+
+# Prepare the status-update payload
+umask 077
+payload="$(mktemp)"
+trap 'rm -f "$payload"' EXIT HUP INT TERM
+cat > "$payload" <<'JSON'
+{
+  "properties": {
+    "Status": { "status": { "name": "In Progress" } },
+    "Done": { "status": { "name": "Not started" } }
+  }
+}
+JSON
+npx --no-install ntn api /v1/pages/$page_id -X PATCH --data "@$payload"
+```
+
+### Update task status at PR creation
+
+When the PR is opened for review:
+
+```bash
+cat > "$payload" <<'JSON'
+{
+  "properties": {
+    "Status": { "status": { "name": "In Review" } },
+    "Done": { "status": { "name": "Not started" } }
+  }
+}
+JSON
+npx --no-install ntn api /v1/pages/$page_id -X PATCH --data "@$payload"
+```
+
+### Mark task done after merge
+
+After the PR merges, mark the task complete (both properties for consistency):
+
+```bash
+cat > "$payload" <<'JSON'
+{
+  "properties": {
+    "Status": { "status": { "name": "Done" } },
+    "Done": { "status": { "name": "Done" } }
+  }
+}
+JSON
+npx --no-install ntn api /v1/pages/$page_id -X PATCH --data "@$payload"
+npx --no-install ntn api /v1/pages/$page_id -X GET  # verify
+```
+
+### Batch tasks for release notes
+
+To collect all tasks completed since a given date or release:
+
+```bash
+npx --no-install ntn datasources query <data-source-id> \
+  --filter '{"property":"Done","status":{"equals":"Done"}}' \
+  --limit 100 --json
+```
+
+Narrow by `Completed On (auto)` property if the automation is active:
+
+```bash
+npx --no-install ntn datasources query <data-source-id> \
+  --filter '{
+    "and": [
+      {"property":"Done","status":{"equals":"Done"}},
+      {"property":"Completed On (auto)","date":{"on_or_after":"2026-07-01"}}
+    ]
+  }' --limit 100 --json
+```
 
 ## Pre-PR review checklist
 
@@ -58,6 +166,7 @@ For a stacked PR, replace `origin/main` with the parent branch. Then confirm:
 - User-facing behavior, configuration, and operational docs are current.
 - Generated files, debug output, credentials, and local artifacts are absent.
 - Commit history and PR size are understandable to a reviewer.
+- **If this change has a Notion task, the task ID is referenced in the PR body.**
 
 Fix every material finding before opening the PR. Rerun checks affected by each fix.
 
@@ -84,6 +193,7 @@ A useful PR body contains:
 - **Validation:** exact checks and meaningful smoke-test evidence.
 - **Risks:** security, data, compatibility, or rollout concerns.
 - **Dependencies:** parent PR and merge order for a stack.
+- **Task:** Notion task ID or link when the change originates from the task tracker.
 - **Release notes:** user-visible wording or `None` with a reason.
 
 After creating or updating a PR, inspect current checks rather than assuming the push triggered CI:
@@ -162,7 +272,7 @@ Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tok
 
 - Decide which merged PRs belong together and explain exclusions when useful.
 - Choose the SemVer impact using `project-conventions`.
-- Draft notes from merged behavior, not commit titles alone.
+- Draft notes from merged behavior, not commit titles alone. **Include references to completed Notion tasks when useful for context.**
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
 - Create or identify a release-candidate deployment for the exact release commit and complete smoke tests. Prefer a staged Production deployment when available.

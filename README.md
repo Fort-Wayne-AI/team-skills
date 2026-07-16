@@ -38,7 +38,7 @@ Versioning, naming, documentation, and release standards for every Fort Wayne AI
 
 ### `software-development-lifecycle`
 
-Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, required CI behavior, and deliberate manual releases and deployments.
+Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, required CI behavior, task-status integration with Notion, and deliberate manual releases and deployments.
 
 ### `notion-cli`
 

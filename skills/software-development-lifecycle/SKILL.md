@@ -5,7 +5,7 @@ description: Defines the Fort Wayne AI workflow for isolated feature development
 
 # Software Development Lifecycle
 
-Follow this policy for every code or configuration change. Load `project-conventions` when naming, versioning, documenting, or releasing. Use [REFERENCE.md](REFERENCE.md) for commands and detailed checklists.
+Follow this policy for every code or configuration change. Load `project-conventions` when naming, versioning, documenting, or releasing. Load `task-management` (which in turn loads `notion-cli`) when you need to read, create, or update Notion tasks as part of the change lifecycle. Use [REFERENCE.md](REFERENCE.md) for commands and detailed checklists.
 
 ## Non-negotiable policy
 
@@ -19,16 +19,33 @@ Follow this policy for every code or configuration change. Load `project-convent
 
 ## Change lifecycle
 
-1. Confirm scope, acceptance criteria, risks, and repository instructions.
-2. Synchronize the base branch, then create an isolated topic branch and worktree.
-3. Implement in focused steps with appropriate tests and documentation.
-4. Run local quality gates and relevant smoke tests.
-5. Review the complete base-to-head change and fix every material finding.
-6. Open the PR with summary, rationale, validation, risks, dependencies, and release impact.
-7. Verify CI and Preview for the current head SHA; rerun the applicable functional suite after every push.
-8. Address review feedback, re-review changed code, and merge only when authorized and green.
-9. Remove the merged worktree and obsolete branches when safe.
-10. Batch, release, stage, promote, verify, and roll back according to the detailed release checklist.
+Each step below integrates the Notion task tracker where applicable. A task ID in brackets (e.g. `FWAI-42`) identifies the corresponding Notion task for the change.
+
+1. **Scope and task** — Confirm acceptance criteria, risks, repository instructions, and that a Notion task exists with clear requirements. If no task exists, create one under the correct project before starting work.
+2. **Branch and worktree** — Synchronize the base branch, then create an isolated topic branch and worktree. Include the task ID in the branch name when helpful (`feat/FWAI-42-short-description`).
+3. **Implement** — In focused steps with appropriate tests and documentation. At the first commit **update the task status to `In Progress`** so the team knows work has begun.
+4. **Gate and smoke** — Run local quality gates and relevant smoke tests.
+5. **Self-review** — Review the complete base-to-head change and fix every material finding.
+6. **Open the PR** — With summary, rationale, validation, risks, dependencies, and release impact. **Include the Notion task link or ID in the PR body** under a `Task` or `Related` section.
+7. **CI and Preview** — Verify CI and Preview for the current head SHA; rerun the applicable functional suite after every push.
+8. **Review and merge** — Address feedback, re-review changed code, and merge only when authorized and green. **After merge, update the task status to `Done`** (both `Status` and `Done` properties).
+9. **Clean up** — Remove the merged worktree and obsolete branches when safe.
+10. **Release** — Batch, release, stage, promote, verify, and roll back according to the detailed release checklist.
+
+## Task integration
+
+All project work originates from the Notion task list. The `task-management` skill holds the canonical schema and safe workflows for the FWAI Tasks data source. Key integration points:
+
+| SDLC step | Task action | Notion properties |
+|---|---|---|
+| Prepare | Verify or create a task with clear acceptance criteria | `Task` (title), `Status` → `To Do`, `Project` |
+| Start implementation | Update task to signal active work | `Status` → `In Progress` |
+| During implementation | Update task on significant milestones | `Status` → `In Review` when PR is opened |
+| PR creation | Link PR in the PR body, reference task ID | Reference in PR summary |
+| Merge | Mark work complete | `Status` → `Done`, `Done` → `Done` |
+| Release | Batch completed tasks into release notes | Read tasks closed since last release |
+
+Use `npx --no-install ntn datasources query <data-source-id> --filter <filter> --json` to find tasks and `npx --no-install ntn api /v1/pages/<page-id> -X PATCH --data @<payload>` to update them. See `task-management` for the exact property schema and payload shapes.
 
 ## Pull request bases
 
