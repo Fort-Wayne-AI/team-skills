@@ -17,6 +17,12 @@ For stacked work, branch the child from the parent branch instead of `origin/mai
 git worktree add -b feat/child-change ../worktrees/project-child feat/parent-change
 ```
 
+Include the task ID in the branch name when it adds context:
+
+```bash
+git worktree add -b feat/FWAI-42-short-description ../worktrees/project-FWAI-42 origin/main
+```
+
 Before making changes, verify the worktree and branch:
 
 ```bash
@@ -33,6 +39,22 @@ git fetch --prune origin
 ```
 
 Never force-remove a worktree or force-delete a branch until you have verified that no needed work would be lost.
+
+## Task integration
+
+The `task-management` skill provides all commands and scripts for reading, updating, and batching Notion tasks. Load it when you need to find a task, update its status, or batch completed work for release notes.
+
+Key scripts available in the installed skill directory:
+
+| SDLC action | Script / command | Location |
+|---|---|---|
+| Find a task by title, status, or project | `task-management` query commands | `task-management` SKILL.md |
+| Mark work started (In Progress) | `scripts/task-update-status.sh <page-id> "In Progress" "Not started"` | `task-management/scripts/` |
+| Mark PR in review (In Review) | `scripts/task-update-status.sh <page-id> "In Review" "Not started"` | `task-management/scripts/` |
+| Mark task done after merge | `scripts/task-update-status.sh <page-id> "Done" "Done"` | `task-management/scripts/` |
+| Batch completed tasks for release notes | `scripts/task-batch-completed.sh <data-source-id> [since-date]` | `task-management/scripts/` |
+
+Do not inline `ntn` commands for task operations in this reference — the `task-management` skill owns the *how*. The *when* is documented in the SDLC SKILL.md change lifecycle and task-integration table.
 
 ## Pre-PR review checklist
 
@@ -58,6 +80,7 @@ For a stacked PR, replace `origin/main` with the parent branch. Then confirm:
 - User-facing behavior, configuration, and operational docs are current.
 - Generated files, debug output, credentials, and local artifacts are absent.
 - Commit history and PR size are understandable to a reviewer.
+- **If this change has a Notion task, the task ID is referenced in the PR body.**
 
 Fix every material finding before opening the PR. Rerun checks affected by each fix.
 
@@ -84,6 +107,7 @@ A useful PR body contains:
 - **Validation:** exact checks and meaningful smoke-test evidence.
 - **Risks:** security, data, compatibility, or rollout concerns.
 - **Dependencies:** parent PR and merge order for a stack.
+- **Task:** Notion task ID or link when the change originates from the task tracker.
 - **Release notes:** user-visible wording or `None` with a reason.
 
 After creating or updating a PR, inspect current checks rather than assuming the push triggered CI:
@@ -162,7 +186,7 @@ Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tok
 
 - Decide which merged PRs belong together and explain exclusions when useful.
 - Choose the SemVer impact using `project-conventions`.
-- Draft notes from merged behavior, not commit titles alone.
+- Draft notes from merged behavior, not commit titles alone. **Include references to completed Notion tasks when useful for context.**
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
 - Create or identify a release-candidate deployment for the exact release commit and complete smoke tests. Prefer a staged Production deployment when available.

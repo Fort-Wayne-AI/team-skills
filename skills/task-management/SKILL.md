@@ -39,3 +39,26 @@ Filter on the exact property names and values in [references/tasks-schema.md](re
 5. **Verify:** retrieve the returned page after every mutation and report the page ID plus the fields changed.
 
 Use `npx --no-install ntn api /v1/pages --docs` and the narrow payload patterns in `notion-cli` for all creates and updates. Never create test tasks in the shared list without explicit authorization.
+
+## Status updates
+
+The scripts in [scripts/](scripts/) perform common task status transitions. They require `NOTION_API_TOKEN` and `ntn` (available after `npm install` in the project root).
+
+| Script | Purpose | Example |
+|---|---|---|
+| `scripts/task-update-status.sh` | Set Status (+ optional Done) on a page | `./scripts/task-update-status.sh <page-id> "In Progress" "Not started"` |
+| `scripts/task-batch-completed.sh` | List completed tasks for release notes | `./scripts/task-batch-completed.sh <data-source-id> 2026-07-01` |
+
+### Typical status transitions
+
+Refer to the `software-development-lifecycle` skill for *when* to run these during the development workflow. The scripts above handle the *how*:
+
+| Desired state | Script call |
+|---|---|
+| Work begins | `./scripts/task-update-status.sh <page-id> "In Progress" "Not started"` |
+| PR submitted for review | `./scripts/task-update-status.sh <page-id> "In Review" "Not started"` |
+| PR merged, work complete | `./scripts/task-update-status.sh <page-id> "Done" "Done"` |
+| Blocked | `./scripts/task-update-status.sh <page-id> "Blocked"` |
+| Release notes batch | `./scripts/task-batch-completed.sh <data-source-id> <since-date>` |
+
+These scripts are convenience wrappers around `npx --no-install ntn api /v1/pages`. You can always use `ntn` directly for custom payloads.
