@@ -182,6 +182,28 @@ Promoting a regular Preview is also supported, but Vercel rebuilds it using Prod
 
 Use the Vercel dashboard if the CLI is not authenticated. Do not pass access tokens in chat or commit project-link credentials.
 
+### Fort Wayne AI Hub URLs
+
+| Environment | URL | Auth | Notes |
+|---|---|---|---|
+| Production | `https://fort-wayne-ai-hub.vercel.app` | Public | Manually promoted from staged `main` build |
+| `main` preview | `https://fort-wayne-ai-hub-git-main-angie-carel.vercel.app` | Vercel auth | Stable alias — latest `main` push updates it |
+| PR preview | `https://fort-wayne-ai-hub-git-{branch-name}-angie-carel.vercel.app` | Vercel auth | Branch name sanitized (`fix/mobile` → `fix-mobile`) |
+| Per-deployment | `https://fort-wayne-ai-{hash}-angie-carel.vercel.app` | Vercel auth | Unique per build, used as immutable review evidence |
+
+**Verification** — always confirm a preview corresponds to the PR's head SHA before merging:
+
+```bash
+curl -sI https://fort-wayne-ai-hub-git-feat-my-change-angie-carel.vercel.app \
+  | grep x-vercel-id
+```
+
+Deployments are listed with:
+
+```bash
+npx vercel list fort-wayne-ai-hub --scope angie-carel
+```
+
 ## Manual release checklist
 
 - Decide which merged PRs belong together and explain exclusions when useful.
