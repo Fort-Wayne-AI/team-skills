@@ -117,8 +117,10 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
     "utf8",
   );
   const packageMetadata = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+  const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
+  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.4\.0/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);
   assert.match(notionReference, /ntn datasources resolve/);
