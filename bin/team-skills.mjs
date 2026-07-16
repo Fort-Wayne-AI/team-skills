@@ -54,8 +54,12 @@ function writeManagedPointer(project) {
 }
 
 function installSkills(project, force) {
-  // One skill per iteration; add new skills to this list
-  const skills = ["project-conventions", "software-development-lifecycle"];
+  const skills = [
+    "project-conventions",
+    "software-development-lifecycle",
+    "notion-cli",
+    "task-management",
+  ];
 
   for (const skill of skills) {
     const source = join(skillsRoot, skill);

@@ -16,7 +16,12 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       encoding: "utf8",
     });
 
-    for (const skill of ["project-conventions", "software-development-lifecycle"]) {
+    for (const skill of [
+      "project-conventions",
+      "software-development-lifecycle",
+      "notion-cli",
+      "task-management",
+    ]) {
       // ── .agents: physical copy ──
       const physicalDir = join(project, ".agents", "skills", skill);
       assert.equal(existsSync(physicalDir), true, `${skill} .agents copy should exist`);
@@ -28,7 +33,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
       assert.deepEqual(
         JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
-        { package: "@fort-wayne-ai/team-skills", version: "0.3.0", skill },
+        { package: "@fort-wayne-ai/team-skills", version: "0.4.0", skill },
       );
 
       // ── .claude and .hermes: symlinks ──
@@ -50,6 +55,8 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
     assert.match(instructions, /<!-- team-skills:start -->/);
     assert.match(instructions, /project-conventions/);
     assert.match(instructions, /software-development-lifecycle/);
+    assert.match(instructions, /notion-cli/);
+    assert.match(instructions, /task-management/);
   } finally {
     rmSync(project, { recursive: true, force: true });
   }
@@ -96,4 +103,40 @@ test("lifecycle skill summarizes policy while reference owns deployment detail",
   assert.match(reference, /without rebuilding, so the tested artifact becomes Current/);
   assert.match(reference, /public production domains now serve the promoted deployment and exact release SHA/);
   assert.match(reference, /rollback target/);
+});
+
+test("Notion skills document the supported CLI, credential, and verified Tasks schema", () => {
+  const notionSkill = readFileSync(join(repoRoot, "skills", "notion-cli", "SKILL.md"), "utf8");
+  const notionReference = readFileSync(
+    join(repoRoot, "skills", "notion-cli", "references", "operations.md"),
+    "utf8",
+  );
+  const taskSkill = readFileSync(join(repoRoot, "skills", "task-management", "SKILL.md"), "utf8");
+  const taskSchema = readFileSync(
+    join(repoRoot, "skills", "task-management", "references", "tasks-schema.md"),
+    "utf8",
+  );
+  const packageMetadata = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+
+  assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
+  assert.match(notionSkill, /official Notion CLI, `ntn`/);
+  assert.match(notionSkill, /NOTION_API_TOKEN/);
+  assert.match(notionReference, /ntn datasources resolve/);
+  assert.match(notionReference, /ntn api \/v1\/pages/);
+
+  assert.match(taskSkill, /Load `notion-cli` first/);
+  assert.match(taskSkill, /73ab655f-03d8-42e0-a87f-61da3d429c46/);
+  for (const field of [
+    "Task",
+    "Status",
+    "Done",
+    "Priority",
+    "Due Date",
+    "Completed On (auto)",
+    "Project",
+    "Assignee",
+    "Reporter",
+  ]) {
+    assert.match(taskSchema, new RegExp(`\\\`${field.replace(/[()]/g, "\\$&")}\\\``));
+  }
 });

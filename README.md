@@ -40,6 +40,14 @@ Versioning, naming, documentation, and release standards for every Fort Wayne AI
 
 Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, required CI behavior, and deliberate manual releases and deployments.
 
+### `notion-cli`
+
+Official-CLI workflow for reading, querying, creating, and updating Notion content. Requires `NOTION_API_TOKEN`; `ntn@0.19.0` is installed as a package dependency.
+
+### `task-management`
+
+Verified schema and safe create/update workflows for the Fort Wayne AI Notion Tasks data source. Loads `notion-cli` first.
+
 ## Development
 
 ```bash
