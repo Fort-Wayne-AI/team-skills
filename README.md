@@ -7,7 +7,7 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 This is a public GitHub repository. Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.4.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.5.0
 npx team-skills setup
 ```
 

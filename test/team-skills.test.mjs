@@ -22,7 +22,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       "notion-cli",
       "task-management",
     ]) {
-      // ── .agents: physical copy ──
+      // .agents: physical copy
       const physicalDir = join(project, ".agents", "skills", skill);
       assert.equal(existsSync(physicalDir), true, `${skill} .agents copy should exist`);
       assert.equal(
@@ -33,10 +33,10 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
       assert.deepEqual(
         JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
-        { package: "@fort-wayne-ai/team-skills", version: "0.4.0", skill },
+        { package: "@fort-wayne-ai/team-skills", version: "0.5.0", skill },
       );
 
-      // ── .claude and .hermes: symlinks ──
+      // .claude and .hermes: symlinks
       for (const directory of [".claude", ".hermes"]) {
         const linkDir = join(project, directory, "skills", skill);
         const skillFile = join(linkDir, "SKILL.md");
@@ -50,7 +50,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       }
     }
 
-    // ── AGENTS.md pointer ──
+    // AGENTS.md pointer
     const instructions = readFileSync(join(project, "AGENTS.md"), "utf8");
     assert.match(instructions, /<!-- team-skills:start -->/);
     assert.match(instructions, /project-conventions/);
@@ -91,6 +91,14 @@ test("lifecycle skill summarizes policy while reference owns deployment detail",
   assert.doesNotMatch(skill, /## Preview environments/);
   assert.doesNotMatch(skill, /## Release and deployment/);
 
+  // SKILL.md integrates task-management as a companion skill.
+  assert.match(skill, /Load `task-management`/);
+  assert.match(skill, /update the task status to `In Progress`/);
+  assert.match(skill, /Task integration/);
+  assert.match(skill, /\| SDLC step \| Task action/);
+  assert.match(skill, /npx --no-install ntn datasources query/);
+  assert.match(skill, /npx --no-install ntn api \/v1\/pages/);
+
   // REFERENCE.md contains the detailed, testable Vercel procedure.
   assert.match(reference, /disable \*\*Auto-assign Custom Production Domains\*\*/);
   assert.match(reference, /full applicable functional test suite, including safe write paths/);
@@ -103,6 +111,12 @@ test("lifecycle skill summarizes policy while reference owns deployment detail",
   assert.match(reference, /without rebuilding, so the tested artifact becomes Current/);
   assert.match(reference, /public production domains now serve the promoted deployment and exact release SHA/);
   assert.match(reference, /rollback target/);
+
+  // REFERENCE.md contains task-integration commands.
+  assert.match(reference, /## Task integration/);
+  assert.match(reference, /Update task status when work begins/);
+  assert.match(reference, /Mark task done after merge/);
+  assert.match(reference, /Batch tasks for release notes/);
 });
 
 test("Notion skills document the supported CLI, credential, and verified Tasks schema", () => {
@@ -120,7 +134,7 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
-  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.4\.0/);
+  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.5\.0/);
   assert.match(readme, /macOS, Linux, and Windows on `x64` and `arm64`/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);
