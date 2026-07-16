@@ -7,7 +7,7 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 This is a public GitHub repository. Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.3.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.4.0
 npx team-skills setup
 ```
 
@@ -39,6 +39,14 @@ Versioning, naming, documentation, and release standards for every Fort Wayne AI
 ### `software-development-lifecycle`
 
 Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, required CI behavior, and deliberate manual releases and deployments.
+
+### `notion-cli`
+
+Official-CLI workflow for reading, querying, creating, and updating Notion content. Requires `NOTION_API_TOKEN`; `ntn@0.19.0` is installed as a package dependency and invoked with `npx --no-install ntn`. The bundled native CLI supports macOS, Linux, and Windows on `x64` and `arm64`.
+
+### `task-management`
+
+Verified schema and safe create/update workflows for the Fort Wayne AI Notion Tasks data source. Loads `notion-cli` first.
 
 ## Development
 
