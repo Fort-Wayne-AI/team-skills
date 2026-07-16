@@ -42,105 +42,19 @@ Never force-remove a worktree or force-delete a branch until you have verified t
 
 ## Task integration
 
-Load `task-management` (which loads `notion-cli`) for the canonical property schema, data source IDs, and write safeguards. These commands assume `NOTION_API_TOKEN` is set in the environment.
+The `task-management` skill provides all commands and scripts for reading, updating, and batching Notion tasks. Load it when you need to find a task, update its status, or batch completed work for release notes.
 
-### Find a task by title or status
+Key scripts available in the installed skill directory:
 
-```bash
-# List recent tasks
-npx --no-install ntn datasources query <data-source-id> --limit 30 --json
+| SDLC action | Script / command | Location |
+|---|---|---|
+| Find a task by title, status, or project | `task-management` query commands | `task-management` SKILL.md |
+| Mark work started (In Progress) | `scripts/task-update-status.sh <page-id> "In Progress" "Not started"` | `task-management/scripts/` |
+| Mark PR in review (In Review) | `scripts/task-update-status.sh <page-id> "In Review" "Not started"` | `task-management/scripts/` |
+| Mark task done after merge | `scripts/task-update-status.sh <page-id> "Done" "Done"` | `task-management/scripts/` |
+| Batch completed tasks for release notes | `scripts/task-batch-completed.sh <data-source-id> [since-date]` | `task-management/scripts/` |
 
-# Filter by status — exact property name and value from the schema
-npx --no-install ntn datasources query <data-source-id> \
-  --filter '{"property":"Status","status":{"equals":"To Do"}}' \
-  --limit 30 --json
-
-# Filter by project relation — requires the project page ID
-npx --no-install ntn datasources query <data-source-id> \
-  --filter '{"property":"Project","relation":{"contains":"<project-page-id>"}}' \
-  --limit 30 --json
-```
-
-Paginate when `has_more` is `true`; pass the returned cursor with `--start-cursor`.
-
-### Update task status when work begins
-
-At the first commit of a new feature branch, mark the task as actively worked on:
-
-```bash
-# Retrieve the page first to see current values
-page_id="<page-id>"
-npx --no-install ntn api /v1/pages/$page_id -X GET
-
-# Prepare the status-update payload
-umask 077
-payload="$(mktemp)"
-trap 'rm -f "$payload"' EXIT HUP INT TERM
-cat > "$payload" <<'JSON'
-{
-  "properties": {
-    "Status": { "status": { "name": "In Progress" } },
-    "Done": { "status": { "name": "Not started" } }
-  }
-}
-JSON
-npx --no-install ntn api /v1/pages/$page_id -X PATCH --data "@$payload"
-```
-
-### Update task status at PR creation
-
-When the PR is opened for review:
-
-```bash
-cat > "$payload" <<'JSON'
-{
-  "properties": {
-    "Status": { "status": { "name": "In Review" } },
-    "Done": { "status": { "name": "Not started" } }
-  }
-}
-JSON
-npx --no-install ntn api /v1/pages/$page_id -X PATCH --data "@$payload"
-```
-
-### Mark task done after merge
-
-After the PR merges, mark the task complete (both properties for consistency):
-
-```bash
-cat > "$payload" <<'JSON'
-{
-  "properties": {
-    "Status": { "status": { "name": "Done" } },
-    "Done": { "status": { "name": "Done" } }
-  }
-}
-JSON
-npx --no-install ntn api /v1/pages/$page_id -X PATCH --data "@$payload"
-npx --no-install ntn api /v1/pages/$page_id -X GET  # verify
-```
-
-### Batch tasks for release notes
-
-To collect all tasks completed since a given date or release:
-
-```bash
-npx --no-install ntn datasources query <data-source-id> \
-  --filter '{"property":"Done","status":{"equals":"Done"}}' \
-  --limit 100 --json
-```
-
-Narrow by `Completed On (auto)` property if the automation is active:
-
-```bash
-npx --no-install ntn datasources query <data-source-id> \
-  --filter '{
-    "and": [
-      {"property":"Done","status":{"equals":"Done"}},
-      {"property":"Completed On (auto)","date":{"on_or_after":"2026-07-01"}}
-    ]
-  }' --limit 100 --json
-```
+Do not inline `ntn` commands for task operations in this reference — the `task-management` skill owns the *how*. The *when* is documented in the SDLC SKILL.md change lifecycle and task-integration table.
 
 ## Pre-PR review checklist
 

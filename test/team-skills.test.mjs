@@ -112,11 +112,12 @@ test("lifecycle skill summarizes policy while reference owns deployment detail",
   assert.match(reference, /public production domains now serve the promoted deployment and exact release SHA/);
   assert.match(reference, /rollback target/);
 
-  // REFERENCE.md contains task-integration commands.
+  // REFERENCE.md task integration defers to task-management skill.
   assert.match(reference, /## Task integration/);
-  assert.match(reference, /Update task status when work begins/);
-  assert.match(reference, /Mark task done after merge/);
-  assert.match(reference, /Batch tasks for release notes/);
+  assert.match(reference, /`task-management` skill provides all commands/);
+  assert.match(reference, /task-update-status\.sh/);
+  assert.match(reference, /task-batch-completed\.sh/);
+  assert.match(reference, /the `task-management` skill owns the \*how\*/);
 });
 
 test("Notion skills document the supported CLI, credential, and verified Tasks schema", () => {
@@ -160,8 +161,15 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
     "Assignee",
     "Reporter",
   ]) {
-    assert.match(taskSchema, new RegExp(`\\\`${field.replace(/[()]/g, "\\$&")}\\\``));
+    assert.match(taskSchema, new RegExp("`" + field.replace(/[()]/g, "\\$&") + "`"));
   }
+
+  // Task-management skill documents status-update scripts and transitions.
+  assert.match(taskSkill, /scripts\/task-update-status\.sh/);
+  assert.match(taskSkill, /scripts\/task-batch-completed\.sh/);
+  assert.match(taskSkill, /In Progress.*Not started/);
+  assert.match(taskSkill, /Status = Done/);
+  assert.match(taskSkill, /skill for \*when\*/);
 });
 
 test("packed consumer can invoke the documented package-local ntn command", () => {
