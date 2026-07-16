@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
@@ -152,12 +152,21 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
 
 test("packed consumer can invoke the documented package-local ntn command", () => {
   const project = mkdtempSync(join(tmpdir(), "team-skills-packed-consumer-"));
-  const standardPath = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+  const isolatedBin = join(project, ".test-bin");
+  mkdirSync(isolatedBin);
+  symlinkSync(process.execPath, join(isolatedBin, "node"));
+  const standardPath = `${isolatedBin}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`;
   const npmCli = resolve(dirname(process.execPath), "../lib/node_modules/npm/bin/npm-cli.js");
 
   try {
     writeFileSync(join(project, "package.json"), '{"private":true}\n', "utf8");
-    execFileSync(process.execPath, [npmCli, "install", "--save-dev", repoRoot], {
+    const packOutput = execFileSync(process.execPath, [npmCli, "pack", "--json", "--pack-destination", project], {
+      cwd: repoRoot,
+      env: { ...process.env, PATH: standardPath },
+      encoding: "utf8",
+    });
+    const tarball = join(project, JSON.parse(packOutput)[0].filename);
+    execFileSync(process.execPath, [npmCli, "install", "--save-dev", tarball], {
       cwd: project,
       env: { ...process.env, PATH: standardPath },
       stdio: "ignore",
