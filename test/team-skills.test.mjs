@@ -21,6 +21,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       "software-development-lifecycle",
       "notion-cli",
       "task-management",
+      "environment-secrets",
     ]) {
       // .agents: physical copy
       const physicalDir = join(project, ".agents", "skills", skill);
@@ -57,6 +58,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
     assert.match(instructions, /software-development-lifecycle/);
     assert.match(instructions, /notion-cli/);
     assert.match(instructions, /task-management/);
+    assert.match(instructions, /environment-secrets/);
   } finally {
     rmSync(project, { recursive: true, force: true });
   }

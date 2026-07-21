@@ -59,6 +59,7 @@ function installSkills(project, force) {
     "software-development-lifecycle",
     "notion-cli",
     "task-management",
+    "environment-secrets",
   ];
 
   for (const skill of skills) {
@@ -124,6 +125,22 @@ try {
     usage(false);
   } else if (command === "setup") {
     setup(args);
+  } else if (command === "env") {
+    const { help, doctor, validate, run, set } = await import("./lib/environment-secrets.mjs");
+    const [sub, ...subArgs] = args;
+    if (!sub || sub === "help") {
+      help();
+    } else if (sub === "doctor") {
+      doctor();
+    } else if (sub === "validate") {
+      validate();
+    } else if (sub === "run") {
+      run(subArgs);
+    } else if (sub === "set") {
+      await set(subArgs[0]);
+    } else {
+      throw new Error(`Unknown env subcommand: ${sub}. Use 'team-skills env help'.`);
+    }
   } else {
     throw new Error(`Unknown command: ${command}`);
   }
