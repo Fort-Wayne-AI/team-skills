@@ -22,16 +22,17 @@ npx team-skills env run -- npm run dev
 ## Adding a new environment variable
 
 ```bash
-# Server-only variable (goes into .env.production):
-npx team-skills env set SUPABASE_SERVICE_ROLE_KEY
+# Add to local .env (default):
+npx team-skills env set SOME_KEY
 
-# Client-accessible variable (goes into .env):
-npx team-skills env set NEXT_PUBLIC_SUPABASE_URL
+# To also add to preview or production, repeat with the target file:
+npx dotenvx encrypt -f .env.preview   # after editing .env.preview
+npx dotenvx encrypt -f .env.production # after editing .env.production
 ```
 
 The `env set` command:
 1. Prompts for the value via stdin (never accepts it as a command-line argument)
-2. Appends the key=value to the appropriate file (`.env` for `NEXT_PUBLIC_*`, `.env.production` for server-only)
+2. Appends the key=value to `.env` (local development)
 3. Runs `dotenvx encrypt` on the file
 4. Regenerates `.env.keys` if needed
 
@@ -73,12 +74,14 @@ If you have an existing plaintext `.env.local` or `.env` file that you want to e
 
 ```bash
 # 1. Ensure .env.example exists with the expected keys (no values)
-# 2. Copy your values into the right files:
-cp .env.local .env              # Public vars
-cp .env.local .env.production   # Server-only vars
+# 2. Create each environment file as a complete parallel set:
+cp .env.local .env             # Local dev — all vars
+cp .env.local .env.preview     # Preview — same or adjusted values
+cp .env.local .env.production  # Production — same or adjusted values
 
-# 3. Encrypt each file:
+# 3. Encrypt each file as its own environment:
 npx dotenvx encrypt -f .env
+npx dotenvx encrypt -f .env.preview
 npx dotenvx encrypt -f .env.production
 
 # 4. Verify:
@@ -88,52 +91,48 @@ npx team-skills env doctor
 rm .env.local
 
 # 6. Commit the encrypted files
-git add .env .env.production .env.example
-git commit -m "chore: migrate to encrypted .env files"
+git add .env .env.preview .env.production .env.example
+git commit -m "feat: add encrypted .env files"
 ```
 
 ## Vercel deployment
 
-### Preview deployments
+Each Vercel environment loads its own parallel .env file. The `@dotenvx/next-env`
+override auto-decrypts the correct file at build time.
 
-Preview environments (PR branches) use `.env.preview`. The encrypted file is in the repository. Vercel decrypts it at build time using `@dotenvx/next-env` (via npm override).
+### Set the decryption keys in Vercel
 
-1. Create `.env.preview` with preview-specific overrides:
-   ```bash
-   npx dotenvx encrypt -f .env.preview
-   ```
-2. Commit the encrypted file — it is safe to commit.
-3. Vercel Preview builds will auto-decrypt it.
-
-**Important**: Do NOT set `DOTENV_KEY` or the encrypted values in Vercel's dashboard. The `@next/env` override handles decryption at build time using the `.env.keys` file.
-
-However, **.env.keys is NOT uploaded to Vercel**. Preview builds therefore need the encryption key available differently:
-
-**Option A (current recommendation)**: Set the private key directly as a Vercel Environment Variable:
 ```bash
-# Copy the private key from .env.keys
-DOTENV_PRIVATE_KEY_DEVELOPMENT=<value>
+# Preview — decrypts .env.preview
+vercel env add DOTENV_PRIVATE_KEY_PREVIEW preview
 
-# Add to Vercel project (Preview environment)
-vercel env add DOTENV_PRIVATE_KEY_DEVELOPMENT preview
+# Production — decrypts .env.production
+vercel env add DOTENV_PRIVATE_KEY_PRODUCTION production
 ```
 
-**Option B**: Use Vercel's Encrypted Environment Variables for the few values that differ between local and preview, and let `.env` with its shared encrypted values handle the rest.
+The `.env` (local dev) file stays out of Vercel entirely — only
+`.env.preview` and `.env.production` are used in their respective environments.
+
+### Preview deployments
+
+1. Create `.env.preview` as a complete parallel set of all env vars:
+   ```bash
+   cp .env .env.preview   # start from current local values
+   # edit .env.preview for preview-specific values
+   npx dotenvx encrypt -f .env.preview
+   ```
+2. Commit the encrypted file.
+3. The `DOTENV_PRIVATE_KEY_PREVIEW` Vercel env var decrypts it at build time.
 
 ### Production deployments
 
-Production uses `.env.production` encrypted file from the repository, plus whatever overrides are needed.
-
-1. Verify the staged Production build:
+1. `.env.production` is already a complete parallel set in the repository.
+2. Verify the staged production build:
    ```bash
    npx team-skills env run -- npm run build
    ```
-2. Promote the tested artifact.
-
-For production, set the private key as a Vercel Environment Variable:
-```bash
-vercel env add DOTENV_PRIVATE_KEY_PRODUCTION production
-```
+3. Promote the tested artifact.
+4. The `DOTENV_PRIVATE_KEY_PRODUCTION` Vercel env var handles decryption.
 
 ## Key rotation
 
