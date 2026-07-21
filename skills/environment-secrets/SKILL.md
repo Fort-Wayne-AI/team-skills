@@ -41,15 +41,13 @@ npx team-skills env set <KEY>
 ## File layout
 
 ```
-.env                     # LOCAL dev — complete parallel set of all variables
-.env.preview             # PREVIEW/PR — complete parallel set
-.env.production          # PRODUCTION — complete parallel set
-.env.example             # Plain text: template with keys only, no values
-.env.keys                # NEVER COMMITTED — private decryption keys
+.env                     # Encrypted — all variables
+.env.example             # Plain text — template with keys only, no values
+.env.keys                # NEVER COMMITTED — single decryption key
 ```
 
-Each environment file is a self-contained, complete snapshot of all env vars.
-Grab `.env` to develop locally. `.env.preview` and `.env.production` mirror
-the same structure with environment-appropriate values.
+A single `.env` file serves all environments (local, preview, production).
+If environment-specific overrides are needed later, add `.env.preview` or
+`.env.production` as parallel files.
 
 See [references/workflows.md](references/workflows.md) for detailed developer, Vercel, rotation, and recovery procedures.

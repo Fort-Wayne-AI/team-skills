@@ -22,12 +22,7 @@ npx team-skills env run -- npm run dev
 ## Adding a new environment variable
 
 ```bash
-# Add to local .env (default):
 npx team-skills env set SOME_KEY
-
-# To also add to preview or production, repeat with the target file:
-npx dotenvx encrypt -f .env.preview   # after editing .env.preview
-npx dotenvx encrypt -f .env.production # after editing .env.production
 ```
 
 The `env set` command:
@@ -74,65 +69,34 @@ If you have an existing plaintext `.env.local` or `.env` file that you want to e
 
 ```bash
 # 1. Ensure .env.example exists with the expected keys (no values)
-# 2. Create each environment file as a complete parallel set:
-cp .env.local .env             # Local dev — all vars
-cp .env.local .env.preview     # Preview — same or adjusted values
-cp .env.local .env.production  # Production — same or adjusted values
+# 2. Copy your values into .env
+cp .env.local .env        # all vars in one file
 
-# 3. Encrypt each file as its own environment:
+# 3. Encrypt
 npx dotenvx encrypt -f .env
-npx dotenvx encrypt -f .env.preview
-npx dotenvx encrypt -f .env.production
 
-# 4. Verify:
+# 4. Verify
 npx team-skills env doctor
 
-# 5. Delete the plaintext source:
+# 5. Delete the plaintext source
 rm .env.local
 
-# 6. Commit the encrypted files
-git add .env .env.preview .env.production .env.example
-git commit -m "feat: add encrypted .env files"
+# 6. Commit the encrypted file
+git add .env .env.example
+git commit -m "feat: add encrypted .env"
 ```
 
 ## Vercel deployment
 
-Each Vercel environment loads its own parallel .env file. The `@dotenvx/next-env`
-override auto-decrypts the correct file at build time.
-
-### Set the decryption keys in Vercel
+Set the single decryption key in both environments:
 
 ```bash
-# Preview — decrypts .env.preview
-vercel env add DOTENV_PRIVATE_KEY_PREVIEW preview
-
-# Production — decrypts .env.production
-vercel env add DOTENV_PRIVATE_KEY_PRODUCTION production
+# Both Preview and Production
+vercel env add DOTENV_PRIVATE_KEY preview
+vercel env add DOTENV_PRIVATE_KEY production
 ```
 
-The `.env` (local dev) file stays out of Vercel entirely — only
-`.env.preview` and `.env.production` are used in their respective environments.
-
-### Preview deployments
-
-1. Create `.env.preview` as a complete parallel set of all env vars:
-   ```bash
-   cp .env .env.preview   # start from current local values
-   # edit .env.preview for preview-specific values
-   npx dotenvx encrypt -f .env.preview
-   ```
-2. Commit the encrypted file.
-3. The `DOTENV_PRIVATE_KEY_PREVIEW` Vercel env var decrypts it at build time.
-
-### Production deployments
-
-1. `.env.production` is already a complete parallel set in the repository.
-2. Verify the staged production build:
-   ```bash
-   npx team-skills env run -- npm run build
-   ```
-3. Promote the tested artifact.
-4. The `DOTENV_PRIVATE_KEY_PRODUCTION` Vercel env var handles decryption.
+The `@dotenvx/next-env` override decrypts `.env` at build time using this key.
 
 ## Key rotation
 
