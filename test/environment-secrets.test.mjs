@@ -339,6 +339,54 @@ test("set delegates secret entry to dotenvx without putting a value in argv", ()
   }
 });
 
+test("run strips a leading -- separator before passing args to dotenvx", () => {
+  const dir = setupProject(false, true);
+  const calls = [];
+  const c = capture();
+
+  try {
+    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+
+    run(["--", "node", "-e", "console.log(1)"], dir, c.log, (command, args, options) => {
+      calls.push({ command, args, options });
+      return "TEAM_SKILLS_ENV_CHECK_OK\n";
+    });
+
+    // calls[0] = readiness probe (dotenvx run --quiet ...), calls[1] = actual run
+    assert.equal(calls.length, 2, "check probe then run");
+    const runArgs = calls[1].args;
+    const separatorIndex = runArgs.indexOf("--");
+    assert.ok(separatorIndex !== -1, "dotenvx needs its own -- separator");
+    assert.deepEqual(runArgs.slice(separatorIndex + 1), ["node", "-e", "console.log(1)"]);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("run works without a leading -- separator", () => {
+  const dir = setupProject(false, true);
+  const calls = [];
+  const c = capture();
+
+  try {
+    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+
+    run(["node", "-e", "console.log(1)"], dir, c.log, (command, args, options) => {
+      calls.push({ command, args, options });
+      return "TEAM_SKILLS_ENV_CHECK_OK\n";
+    });
+
+    assert.equal(calls.length, 2, "check probe then run");
+    const runArgs = calls[1].args;
+    const separatorIndex = runArgs.indexOf("--");
+    assert.deepEqual(runArgs.slice(separatorIndex + 1), ["node", "-e", "console.log(1)"]);
+  } finally {
+    cleanup(dir);
+  }
+});
+
 test("set rejects invalid key names before invoking dotenvx", () => {
   const calls = [];
   const c = capture();

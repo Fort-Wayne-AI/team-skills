@@ -59,7 +59,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
       assert.deepEqual(
         JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
-        { package: "@fort-wayne-ai/team-skills", version: "0.5.1", skill },
+        { package: "@fort-wayne-ai/team-skills", version: "0.6.0", skill },
       );
 
       // .claude and .hermes: symlinks
@@ -162,7 +162,7 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
-  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.5\.1/);
+  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.6\.0/);
   assert.match(readme, /macOS, Linux, and Windows on `x64` and `arm64`/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);
