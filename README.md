@@ -7,7 +7,7 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 This is a public GitHub repository. Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.5.1
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.6.0
 npx team-skills setup
 ```
 
@@ -19,6 +19,11 @@ npx team-skills setup
 
 ```bash
 npx team-skills setup [--project <path>] [--force]
+npx team-skills env doctor
+npx team-skills env validate
+npx team-skills env check
+npx team-skills env run -- <command>
+npx team-skills env set <KEY>
 ```
 
 ### `setup`
@@ -29,6 +34,10 @@ Copies each bundled skill (raw Markdown) into the consumer project's `.agents/sk
 |---|---|
 | `--project <path>` | Target project directory (default: current working directory) |
 | `--force` | Overwrite existing skill directories even if unmanaged |
+
+### `env`
+
+Encrypted environment variable management via `@dotenvx/dotenvx`. See the `environment-secrets` skill for full documentation.
 
 ## Shared skills
 
@@ -47,6 +56,10 @@ Official-CLI workflow for reading, querying, creating, and updating Notion conte
 ### `task-management`
 
 Verified schema and safe create/update workflows for the Fort Wayne AI Notion Tasks data source. Loads `notion-cli` first.
+
+### `environment-secrets`
+
+Encrypted `.env` management via `@dotenvx/dotenvx`. Provides `doctor` (proves decryption, not just file existence), `validate` (names match `.env.example`), `check` (exits nonzero on failure, for builds), `run` (decrypt and execute), and `set` (masked prompt, never accepts values in argv).
 
 ## Development
 

@@ -7,6 +7,7 @@ This project uses project-local shared skills installed by `@fort-wayne-ai/team-
 - `software-development-lifecycle` — worktree-based development, review, PR, CI, release, and deployment workflow.
 - `notion-cli` — authenticated Notion access through the official `ntn` CLI.
 - `task-management` — FWAI Notion task-list schema and safe project-task workflows.
+- `environment-secrets` — encrypted .env management with dotenvx and team-skills env commands.
 
 Skill files physically live at `.agents/skills/` (single source of truth). `.claude/skills/` and `.hermes/skills/` are symlinks into `.agents/skills/` — no duplication.
 <!-- team-skills:end -->

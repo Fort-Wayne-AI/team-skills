@@ -8,6 +8,31 @@ import test from "node:test";
 const repoRoot = new URL("..", import.meta.url).pathname;
 const cli = join(repoRoot, "bin", "team-skills.mjs");
 
+test("CLI routes env commands through the packaged entrypoint", () => {
+  const output = execFileSync(process.execPath, [cli, "env", "help"], {
+    encoding: "utf8",
+  });
+
+  assert.match(output, /team-skills env — encrypted environment variable management/);
+  assert.match(output, /team-skills env doctor/);
+  assert.match(output, /team-skills env run <command>/);
+});
+
+test("CLI rejects secret values passed to env set as arguments", () => {
+  assert.throws(
+    () => execFileSync(process.execPath, [cli, "env", "set", "TEST_KEY", "fake-secret-value"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.doesNotMatch(error.stderr, /fake-secret-value/);
+      assert.match(error.stderr, /Never pass secret values as arguments/);
+      return true;
+    },
+  );
+});
+
 test("setup installs skills into .agents (physical) and symlinks from .claude and .hermes", () => {
   const project = mkdtempSync(join(tmpdir(), "team-skills-consumer-"));
 
@@ -21,6 +46,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       "software-development-lifecycle",
       "notion-cli",
       "task-management",
+      "environment-secrets",
     ]) {
       // .agents: physical copy
       const physicalDir = join(project, ".agents", "skills", skill);
@@ -33,7 +59,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
       assert.deepEqual(
         JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
-        { package: "@fort-wayne-ai/team-skills", version: "0.5.0", skill },
+        { package: "@fort-wayne-ai/team-skills", version: "0.6.0", skill },
       );
 
       // .claude and .hermes: symlinks
@@ -57,6 +83,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
     assert.match(instructions, /software-development-lifecycle/);
     assert.match(instructions, /notion-cli/);
     assert.match(instructions, /task-management/);
+    assert.match(instructions, /environment-secrets/);
   } finally {
     rmSync(project, { recursive: true, force: true });
   }
@@ -135,7 +162,7 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
-  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.5\.0/);
+  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.6\.0/);
   assert.match(readme, /macOS, Linux, and Windows on `x64` and `arm64`/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);
