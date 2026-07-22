@@ -126,16 +126,18 @@ try {
   } else if (command === "setup") {
     setup(args);
   } else if (command === "env") {
-    const { help, doctor, validate, run, set } = await import("../lib/environment-secrets.mjs");
+    const { help, doctor, validate, check, run, set } = await import("../lib/environment-secrets.mjs");
     const [sub, ...subArgs] = args;
     if (!sub || sub === "help") {
       help();
     } else if (sub === "doctor") {
-      doctor();
+      if (!doctor()) process.exitCode = 1;
     } else if (sub === "validate") {
       validate();
+    } else if (sub === "check") {
+      if (!check()) process.exitCode = 1;
     } else if (sub === "run") {
-      run(subArgs);
+      if (!run(subArgs)) process.exitCode = 1;
     } else if (sub === "set") {
       if (subArgs.length !== 1) {
         throw new Error("Usage: team-skills env set <KEY>. Never pass secret values as arguments.");

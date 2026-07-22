@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { help, doctor, validate, run, set } from "../lib/environment-secrets.mjs";
+import { help, doctor, validate, check, run, set } from "../lib/environment-secrets.mjs";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -88,6 +88,7 @@ test("help outputs usage without throwing", () => {
   assert.match(c.text(), /team-skills env/);
   assert.match(c.text(), /doctor/);
   assert.match(c.text(), /validate/);
+  assert.match(c.text(), /check/);
   assert.match(c.text(), /run/);
   assert.match(c.text(), /set/);
   assert.match(c.text(), /\.env\.keys must NEVER/);
@@ -101,7 +102,7 @@ test("doctor reports files with encryption status", () => {
 
     const text = c.text();
     assert.match(text, /Environment Doctor/);
-    assert.match(text, /\.env\.keys/);
+    assert.match(text, /decryption key/);
     assert.match(text, /\.env/);
     assert.match(text, /plaintext/);
     assert.match(text, /NEXT_PUBLIC_SUPABASE_URL/);
@@ -121,8 +122,8 @@ test("doctor warns when .env.keys is missing", () => {
     const c = capture();
     doctor(dir, c.log);
 
-    assert.match(c.text(), /\.env\.keys\s+✗ missing/);
-    assert.match(c.text(), /Missing \.env\.keys/);
+    assert.match(c.text(), /decryption key\s+✗ missing/);
+    assert.match(c.text(), /Missing decryption key/);
   } finally {
     cleanup(dir);
   }
@@ -196,7 +197,7 @@ test("doctor detects encrypted files when values are encrypted", () => {
       "utf8",
     );
     const c = capture();
-    doctor(dir, c.log);
+    doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n");
     assert.match(c.text(), /encrypted/);
   } finally {
     cleanup(dir);
@@ -235,9 +236,76 @@ test("doctor reports decryptable status when both encrypted and keys present", (
       "utf8",
     );
     const c = capture();
-    doctor(dir, c.log);
-    // Should indicate decryptable
-    assert.match(c.text(), /decryptable/);
+    doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n");
+    // Should prove that decryption actually succeeded.
+    assert.match(c.text(), /decryption verified/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("check succeeds only when the readiness probe confirms decrypted values", () => {
+  const dir = setupProject(false, true);
+  const c = capture();
+
+  try {
+    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake-ciphertext\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+
+    const ready = check(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n");
+
+    assert.equal(ready, true);
+    assert.match(c.text(), /decrypted successfully/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("check fails closed and reports names only when values remain encrypted", () => {
+  const dir = setupProject(false, true);
+  const c = capture();
+
+  try {
+    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake-ciphertext\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+    const error = Object.assign(new Error("probe failed"), {
+      status: 1,
+      stdout: "TEAM_SKILLS_ENV_CHECK_MISSING:TEST_KEY\n",
+      stderr: "",
+    });
+
+    const ready = check(dir, c.log, () => { throw error; });
+
+    assert.equal(ready, false);
+    assert.match(c.text(), /TEST_KEY/);
+    assert.doesNotMatch(c.text(), /fake-ciphertext/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("run does not start the requested child when readiness fails", () => {
+  const dir = setupProject(false, true);
+  const calls = [];
+  const c = capture();
+
+  try {
+    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake-ciphertext\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+    const error = Object.assign(new Error("probe failed"), {
+      status: 1,
+      stdout: "TEAM_SKILLS_ENV_CHECK_MISSING:TEST_KEY\n",
+      stderr: "",
+    });
+
+    const started = run(["node", "child.mjs"], dir, c.log, (...args) => {
+      calls.push(args);
+      throw error;
+    });
+
+    assert.equal(started, false);
+    assert.equal(calls.length, 1, "only the readiness probe should execute");
+    assert.match(c.text(), /Command not started/);
   } finally {
     cleanup(dir);
   }
