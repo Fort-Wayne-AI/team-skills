@@ -18,6 +18,21 @@ test("CLI routes env commands through the packaged entrypoint", () => {
   assert.match(output, /team-skills env run <command>/);
 });
 
+test("CLI rejects secret values passed to env set as arguments", () => {
+  assert.throws(
+    () => execFileSync(process.execPath, [cli, "env", "set", "TEST_KEY", "fake-secret-value"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.doesNotMatch(error.stderr, /fake-secret-value/);
+      assert.match(error.stderr, /Never pass secret values as arguments/);
+      return true;
+    },
+  );
+});
+
 test("setup installs skills into .agents (physical) and symlinks from .claude and .hermes", () => {
   const project = mkdtempSync(join(tmpdir(), "team-skills-consumer-"));
 

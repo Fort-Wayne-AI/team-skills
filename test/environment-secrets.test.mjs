@@ -242,3 +242,41 @@ test("doctor reports decryptable status when both encrypted and keys present", (
     cleanup(dir);
   }
 });
+
+test("set delegates secret entry to dotenvx without putting a value in argv", () => {
+  const dir = setupProject(false, false);
+  const calls = [];
+  const c = capture();
+
+  try {
+    set("NEW_SECRET", dir, c.log, (command, args, options) => {
+      calls.push({ command, args, options });
+    });
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].command, "npx");
+    assert.deepEqual(calls[0].args, [
+      "--no-install",
+      "dotenvx",
+      "set",
+      "NEW_SECRET",
+      "-f",
+      join(dir, ".env"),
+    ]);
+    assert.equal(calls[0].options.stdio, "inherit");
+    assert.doesNotMatch(calls[0].args.join(" "), /fake.*secret/i);
+    assert.match(c.text(), /NEW_SECRET encrypted into \.env/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("set rejects invalid key names before invoking dotenvx", () => {
+  const calls = [];
+  const c = capture();
+
+  set("bad key", undefined, c.log, (...args) => calls.push(args));
+
+  assert.equal(calls.length, 0);
+  assert.match(c.text(), /Usage: team-skills env set <KEY>/);
+});

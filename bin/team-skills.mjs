@@ -137,6 +137,9 @@ try {
     } else if (sub === "run") {
       run(subArgs);
     } else if (sub === "set") {
+      if (subArgs.length !== 1) {
+        throw new Error("Usage: team-skills env set <KEY>. Never pass secret values as arguments.");
+      }
       await set(subArgs[0]);
     } else {
       throw new Error(`Unknown env subcommand: ${sub}. Use 'team-skills env help'.`);
