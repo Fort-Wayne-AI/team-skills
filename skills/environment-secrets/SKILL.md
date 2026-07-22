@@ -1,57 +1,61 @@
 ---
 name: environment-secrets
-description: Encrypted .env management via dotenvx and team-skills env commands. Load when working with environment variables, secrets, .env files, or key management for any Fort Wayne AI project.
+description: Encrypted .env management via dotenvx and target-aware team-skills commands. Load when working with environment variables, secrets, .env files, or key management for any Fort Wayne AI project.
 ---
 
 # Environment Secrets
 
-This skill manages encrypted .env files using `@dotenvx/dotenvx` through the `team-skills env` command interface.
+This skill manages encrypted environment files through `team-skills env` and `@dotenvx/dotenvx`.
 
 ## Prerequisites
 
-- The consumer project has `@dotenvx/dotenvx` installed
-- Next.js projects also install `@dotenvx/next-env` (drop-in `@next/env` override)
-- `@fort-wayne-ai/team-skills` is installed and `npx team-skills setup` has been run
-- `.env.keys` exists on the machine but is **never committed** to Git or uploaded to Vercel
+- The consumer project installs `@dotenvx/dotenvx`.
+- Next.js projects also install `@dotenvx/next-env` (the `@next/env` drop-in override).
+- `@fort-wayne-ai/team-skills` is installed and `npx team-skills setup` has run.
+- `.env.keys` exists only on authorized developer machines; it is never committed or uploaded.
+
+## Targets and files
+
+| Target | Encrypted file | Intended use |
+|---|---|---|
+| `local` | `.env` | Local development |
+| `preview` | `.env.preview` | Vercel Preview |
+| `production` | `.env.production` | Vercel Production |
+| `auto` | Selects from `VERCEL_ENV`; otherwise `local` | Normal command default |
+| `all` | All three files | `doctor`, `validate`, and `check` only |
+
+`auto` deliberately reads `VERCEL_ENV`, not `NODE_ENV`: Vercel Preview builds use `NODE_ENV=production`.
 
 ## Commands
 
 ```bash
-# Check env file status and prove decryption works
+# Local (the default outside Vercel)
 npx team-skills env doctor
-
-# Validate variable names against .env.example
 npx team-skills env validate
-
-# Prove every variable decrypts (exits nonzero on failure)
 npx team-skills env check
-
-# Run a command with decrypted env (no plaintext file created)
 npx team-skills env run -- npm run dev
 
-# Encrypt a new variable (prompts for value, never accepts in argv)
-npx team-skills env set <KEY>
+# Explicitly verify every committed encrypted file
+npx team-skills env doctor --target all
+npx team-skills env validate --target all
+npx team-skills env check --target all
+
+# Run a Preview or Production command with exactly one selected file
+npx team-skills env run --target preview -- npm run build
+npx team-skills env run --target production -- npm run build
+
+# Add or change one value through dotenvx's masked prompt
+npx team-skills env set --target preview SOME_KEY
 ```
 
 ## Agent rules
 
-1. **Never read raw .env values** — use `doctor`, `validate`, `check`, and `run` only.
-2. **Report missing variables by name only** — never print a secret value in output.
-3. **`env set` never accepts a value argument** — always uses dotenvx's masked prompt.
-4. **`env doctor` and `env validate` expose names/status only** — no secret values.
-5. **`env run` proves decryption before starting the child command** — fails closed if not ready.
-6. **`env check` exits nonzero on failure** — wire it into pre-build steps.
-7. **`.env.keys` is the single sensitive artifact** — guard it like a private key.
+1. **Never read raw `.env` values.** Use `doctor`, `validate`, `check`, `run`, and masked `set` only.
+2. **Report names and status only.** Never print secret values, dotenvx private keys, or command arguments containing values.
+3. **`env set` never accepts a value argument.** dotenvx owns the masked prompt.
+4. **`env run` performs `check` first** and does not start its child process if decryption is not ready.
+5. **`all` is verification-only.** `run` and `set` reject it because they must select exactly one environment.
+6. **Platform variables retain precedence.** dotenvx must not overwrite existing `process.env`; integration-provided Preview values therefore override encrypted defaults.
+7. **Keep keys isolated.** Vercel Preview must never receive a dotenvx key that decrypts `.env.production`.
 
-## File layout
-
-```
-.env                     # Encrypted — all variables
-.env.example             # Plain text — template with keys only, no values
-.env.keys                # NEVER COMMITTED — single decryption key
-```
-
-A single `.env` file with one `DOTENV_PRIVATE_KEY` serves all environments (local, preview, production).
-If environment-specific overrides are needed later, add `.env.preview` or `.env.production` as parallel files.
-
-See [references/workflows.md](references/workflows.md) for detailed developer, Vercel, rotation, and recovery procedures.
+See [references/workflows.md](references/workflows.md) for setup, Vercel, rotation, and recovery procedures.
