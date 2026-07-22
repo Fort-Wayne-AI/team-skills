@@ -126,7 +126,7 @@ try {
   } else if (command === "setup") {
     setup(args);
   } else if (command === "env") {
-    const { help, doctor, validate, run, set } = await import("./lib/environment-secrets.mjs");
+    const { help, doctor, validate, run, set } = await import("../lib/environment-secrets.mjs");
     const [sub, ...subArgs] = args;
     if (!sub || sub === "help") {
       help();

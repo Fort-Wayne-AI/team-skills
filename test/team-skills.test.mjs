@@ -8,6 +8,16 @@ import test from "node:test";
 const repoRoot = new URL("..", import.meta.url).pathname;
 const cli = join(repoRoot, "bin", "team-skills.mjs");
 
+test("CLI routes env commands through the packaged entrypoint", () => {
+  const output = execFileSync(process.execPath, [cli, "env", "help"], {
+    encoding: "utf8",
+  });
+
+  assert.match(output, /team-skills env — encrypted environment variable management/);
+  assert.match(output, /team-skills env doctor/);
+  assert.match(output, /team-skills env run <command>/);
+});
+
 test("setup installs skills into .agents (physical) and symlinks from .claude and .hermes", () => {
   const project = mkdtempSync(join(tmpdir(), "team-skills-consumer-"));
 
