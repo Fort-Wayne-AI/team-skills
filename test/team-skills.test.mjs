@@ -33,6 +33,35 @@ test("CLI rejects secret values passed to env set as arguments", () => {
   );
 });
 
+test("CLI accepts --target and rejects unknown target names before running dotenvx", () => {
+  assert.throws(
+    () => execFileSync(process.execPath, [cli, "env", "doctor", "--target", "not-a-target"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Unknown environment target: not-a-target/);
+      return true;
+    },
+  );
+});
+
+test("CLI leaves --target after the run separator for the child command", () => {
+  assert.throws(
+    () => execFileSync(process.execPath, [cli, "env", "run", "--", "node", "-e", "0", "--target", "all"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stdout, /\.env not found/);
+      assert.doesNotMatch(error.stdout, /cannot use --target all/);
+      return true;
+    },
+  );
+});
+
 test("setup installs skills into .agents (physical) and symlinks from .claude and .hermes", () => {
   const project = mkdtempSync(join(tmpdir(), "team-skills-consumer-"));
 
@@ -59,7 +88,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
       assert.deepEqual(
         JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
-        { package: "@fort-wayne-ai/team-skills", version: "0.6.0", skill },
+        { package: "@fort-wayne-ai/team-skills", version: "0.7.0", skill },
       );
 
       // .claude and .hermes: symlinks
@@ -162,7 +191,7 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
-  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.6\.0/);
+  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.7\.0/);
   assert.match(readme, /macOS, Linux, and Windows on `x64` and `arm64`/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);

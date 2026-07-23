@@ -7,7 +7,7 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 This is a public GitHub repository. Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.6.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.7.0
 npx team-skills setup
 ```
 
@@ -19,11 +19,11 @@ npx team-skills setup
 
 ```bash
 npx team-skills setup [--project <path>] [--force]
-npx team-skills env doctor
-npx team-skills env validate
-npx team-skills env check
-npx team-skills env run -- <command>
-npx team-skills env set <KEY>
+npx team-skills env doctor [--target local|preview|production|all|auto]
+npx team-skills env validate [--target local|preview|production|all|auto]
+npx team-skills env check [--target local|preview|production|all|auto]
+npx team-skills env run [--target local|preview|production|auto] -- <command>
+npx team-skills env set [--target local|preview|production|auto] <KEY>
 ```
 
 ### `setup`
@@ -59,7 +59,7 @@ Verified schema and safe create/update workflows for the Fort Wayne AI Notion Ta
 
 ### `environment-secrets`
 
-Encrypted `.env` management via `@dotenvx/dotenvx`. Provides `doctor` (proves decryption, not just file existence), `validate` (names match `.env.example`), `check` (exits nonzero on failure, for builds), `run` (decrypt and execute), and `set` (masked prompt, never accepts values in argv).
+Target-aware encrypted `.env` management via `@dotenvx/dotenvx`. Supports local `.env`, Preview `.env.preview`, and Production `.env.production`; `auto` chooses from `VERCEL_ENV` while `all` verifies every target. Provides `doctor` (proves decryption), `validate` (names match `.env.example`), `check` (fails closed), `run` (decrypt and execute one target), and `set` (masked prompt, never accepts values in argv).
 
 ## Development
 

@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { help, doctor, validate, check, run, set } from "../lib/environment-secrets.mjs";
+import {
+  help,
+  doctor,
+  validate,
+  check,
+  run,
+  set,
+  resolveTarget,
+  getEnvFile,
+} from "../lib/environment-secrets.mjs";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -395,4 +404,106 @@ test("set rejects invalid key names before invoking dotenvx", () => {
 
   assert.equal(calls.length, 0);
   assert.match(c.text(), /Usage: team-skills env set <KEY>/);
+});
+
+test("resolveTarget chooses an explicit target or Vercel's deployment target", () => {
+  assert.equal(resolveTarget("local"), "local");
+  assert.equal(resolveTarget("preview"), "preview");
+  assert.equal(resolveTarget("production"), "production");
+  assert.equal(resolveTarget("all"), "all");
+  assert.equal(resolveTarget("auto", undefined), "local");
+  assert.equal(resolveTarget("auto", "preview"), "preview");
+  assert.equal(resolveTarget("auto", "production"), "production");
+  assert.equal(resolveTarget(undefined, "preview"), "preview");
+});
+
+test("getEnvFile maps each single target to its encrypted file", () => {
+  assert.equal(getEnvFile("local"), ".env");
+  assert.equal(getEnvFile("preview"), ".env.preview");
+  assert.equal(getEnvFile("production"), ".env.production");
+  assert.throws(() => getEnvFile("all"), /does not have one environment file/);
+});
+
+test("doctor --target all reports every target and fails closed when one file is missing", () => {
+  const dir = setupProject(false, true);
+  const c = capture();
+  try {
+    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:local\n", "utf8");
+    writeFileSync(join(dir, ".env.preview"), "TEST_KEY=encrypted:preview\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+
+    const ready = doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n", "all");
+
+    assert.equal(ready, false);
+    assert.match(c.text(), /Target: local/);
+    assert.match(c.text(), /Target: preview/);
+    assert.match(c.text(), /Target: production/);
+    assert.match(c.text(), /\.env\.production\s+not found/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("run --target preview probes and runs only .env.preview", () => {
+  const dir = setupProject(false, true);
+  const calls = [];
+  const c = capture();
+  try {
+    writeFileSync(join(dir, ".env.preview"), "TEST_KEY=encrypted:preview\n", "utf8");
+    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
+
+    const started = run(
+      ["node", "-e", "console.log(1)"],
+      dir,
+      c.log,
+      (command, args, options) => {
+        calls.push({ command, args, options });
+        return "TEAM_SKILLS_ENV_CHECK_OK\n";
+      },
+      "preview",
+    );
+
+    assert.equal(started, true);
+    assert.equal(calls.length, 2, "check probe then requested child");
+    assert.ok(calls.every((call) => call.args.includes(join(dir, ".env.preview"))));
+    assert.ok(calls.every((call) => !call.args.includes(join(dir, ".env"))));
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("set --target production encrypts into .env.production without accepting a value argument", () => {
+  const dir = setupProject(false, false);
+  const calls = [];
+  const c = capture();
+  try {
+    set("NEW_SECRET", dir, c.log, (command, args, options) => {
+      calls.push({ command, args, options });
+    }, "production");
+
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].args, [
+      "--no-install",
+      "dotenvx",
+      "set",
+      "NEW_SECRET",
+      "-f",
+      join(dir, ".env.production"),
+    ]);
+    assert.match(c.text(), /NEW_SECRET encrypted into .env.production/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("run and set reject --target all because they require one environment", () => {
+  const c = capture();
+  assert.equal(run(["node", "-e", "0"], undefined, c.log, undefined, "all"), false);
+  assert.match(c.text(), /cannot use --target all/);
+
+  const setOutput = capture();
+  set("TEST_KEY", undefined, setOutput.log, () => {
+    throw new Error("must not run");
+  }, "all");
+  assert.match(setOutput.text(), /cannot use --target all/);
 });
