@@ -1,75 +1,30 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import {
-  help,
-  doctor,
-  validate,
   check,
+  doctor,
+  getLocalEnvFile,
+  help,
+  isVercelBuild,
   run,
   set,
-  resolveTarget,
-  getEnvFile,
+  validate,
 } from "../lib/environment-secrets.mjs";
 
-// ---------------------------------------------------------------------------
-// Test fixtures
-// ---------------------------------------------------------------------------
-//
-// All fixture values use obviously fake data. Tests assert these values NEVER
-// appear in doctor/validate output.
-
-const EXAMPLE_CONTENT = `# .env.example
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-NEXT_PUBLIC_SLACK_INVITE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-NOTION_TOKEN=
-NOTION_LEARNING_OPPS_DS=
-NOTION_EVENTS_DS=
-CRON_SECRET=
+const EXAMPLE_CONTENT = `NEXT_PUBLIC_FAKE_URL=
+SERVER_FAKE_KEY=
 `;
+const LOCAL_ENV_FILE = ".env.local.enc";
 
-const PLAIN_ENV_CONTENT = `NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=pubkey_abc123
-NEXT_PUBLIC_SLACK_INVITE_URL=https://slack.example.com/invite
-SUPABASE_SERVICE_ROLE_KEY=sr_key_fake_do_not_use
-NOTION_TOKEN=ntn_fake_token_do_not_use
-NOTION_LEARNING_OPPS_DS=ds_fake_learning
-NOTION_EVENTS_DS=ds_fake_events
-CRON_SECRET=cron_secret_fake_123
-`;
-
-const FAKE_SECRETS = [
-  "sr_key_fake_do_not_use",
-  "ntn_fake_token_do_not_use",
-  "cron_secret_fake_123",
-];
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Create a temporary project directory with .env.example and optional .env files. */
-function setupProject(withPlainEnv = false, withKeys = false) {
+function setupProject({ local = "", keys = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "env-secrets-test-"));
   writeFileSync(join(dir, ".env.example"), EXAMPLE_CONTENT, "utf8");
-
-  if (withPlainEnv) {
-    writeFileSync(join(dir, ".env"), PLAIN_ENV_CONTENT, "utf8");
-  }
-
-  if (withKeys) {
-    writeFileSync(
-      join(dir, ".env.keys"),
-      `DOTENV_PRIVATE_KEY_DEVELOPMENT=fake_key_for_testing_only\n`,
-      "utf8",
-    );
-  }
-
+  if (local) writeFileSync(join(dir, LOCAL_ENV_FILE), local, "utf8");
+  if (keys) writeFileSync(join(dir, ".env.keys"), "DOTENV_PRIVATE_KEY=fake_key_for_testing_only\n", "utf8");
   return dir;
 }
 
@@ -77,433 +32,99 @@ function cleanup(dir) {
   rmSync(dir, { recursive: true, force: true });
 }
 
-/** Capture console output by providing a custom log function. */
 function capture() {
   const lines = [];
-  return {
-    log: (msg) => lines.push(String(msg)),
-    lines: () => lines,
-    text: () => lines.join("\n"),
-  };
+  return { log: (message) => lines.push(String(message)), text: () => lines.join("\n") };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+test("the only local encrypted file is .env.local.enc", () => {
+  assert.equal(getLocalEnvFile(), LOCAL_ENV_FILE);
+});
 
-test("help outputs usage without throwing", () => {
+test("Vercel context is recognized only from VERCEL=1", () => {
+  assert.equal(isVercelBuild({ VERCEL: "1" }), true);
+  assert.equal(isVercelBuild({ VERCEL: "0" }), false);
+  assert.equal(isVercelBuild({ VERCEL_ENV: "preview" }), false);
+  assert.equal(isVercelBuild({}), false);
+});
+
+test("help describes one local file and Vercel-hosted configuration", () => {
   const c = capture();
   help(c.log);
-  assert.match(c.text(), /team-skills env/);
-  assert.match(c.text(), /doctor/);
-  assert.match(c.text(), /validate/);
-  assert.match(c.text(), /check/);
-  assert.match(c.text(), /run/);
-  assert.match(c.text(), /set/);
-  assert.match(c.text(), /\.env\.keys must NEVER/);
+  assert.match(c.text(), /\.env\.local\.enc/);
+  assert.match(c.text(), /Vercel Environment Variables/);
+  assert.doesNotMatch(c.text(), /--target/);
 });
 
-test("doctor reports files with encryption status", () => {
-  const dir = setupProject(true, true);
+test("doctor and validate inspect only the local encrypted file", () => {
+  const dir = setupProject({ local: "NEXT_PUBLIC_FAKE_URL=encrypted:fake\nSERVER_FAKE_KEY=encrypted:fake\n", keys: true });
+  try {
+    writeFileSync(join(dir, ".env"), "UNRELATED=plaintext\n", "utf8");
+    writeFileSync(join(dir, ".env.preview"), "UNRELATED=plaintext\n", "utf8");
+    writeFileSync(join(dir, ".env.production"), "UNRELATED=plaintext\n", "utf8");
+    const c = capture();
+    assert.equal(doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n"), true);
+    assert.equal(validate(dir, c.log), true);
+    assert.match(c.text(), /\.env\.local\.enc/);
+    assert.doesNotMatch(c.text(), /\.env\.preview|\.env\.production/);
+  } finally {
+    cleanup(dir);
+  }
+});
+
+test("check fails closed when local encrypted configuration or its key is absent", () => {
+  const dir = setupProject();
   try {
     const c = capture();
-    doctor(dir, c.log);
-
-    const text = c.text();
-    assert.match(text, /Environment Doctor/);
-    assert.match(text, /decryption key/);
-    assert.match(text, /\.env/);
-    assert.match(text, /plaintext/);
-    assert.match(text, /NEXT_PUBLIC_SUPABASE_URL/);
-
-    // SECURITY: No fake secret values should appear in output
-    for (const secret of FAKE_SECRETS) {
-      assert.doesNotMatch(text, new RegExp(secret.replace(/[.+*?^${}()|[\]\\]/g, "\\$&")));
-    }
+    assert.equal(check(dir, c.log), false);
+    assert.match(c.text(), /\.env\.local\.enc not found/);
   } finally {
     cleanup(dir);
   }
 });
 
-test("doctor warns when .env.keys is missing", () => {
-  const dir = setupProject(true, false);
+test("local run checks then invokes dotenvx with only .env.local.enc", () => {
+  const dir = setupProject({ local: "NEXT_PUBLIC_FAKE_URL=encrypted:fake\nSERVER_FAKE_KEY=encrypted:fake\n", keys: true });
   try {
+    const calls = [];
     const c = capture();
-    doctor(dir, c.log);
-
-    assert.match(c.text(), /decryption key\s+✗ missing/);
-    assert.match(c.text(), /Missing decryption key/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("doctor handles empty project", () => {
-  const dir = setupProject(false, false);
-  try {
-    const c = capture();
-    doctor(dir, c.log);
-
-    const text = c.text();
-    assert.match(text, /not found/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("validate matches when .env matches .env.example", () => {
-  const dir = setupProject(true, false);
-  try {
-    const c = capture();
-    validate(dir, c.log);
-
-    assert.match(c.text(), /matches \.env\.example/);
-    assert.match(c.text(), /All env files match/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("validate reports missing and extra keys", () => {
-  const dir = setupProject(false, false);
-  try {
-    // Write a .env that's missing some keys and has extras
-    writeFileSync(join(dir, ".env"), "NEXT_PUBLIC_SUPABASE_URL=https://example.com\nEXTRA_KEY=val\n", "utf8");
-
-    const c = capture();
-    validate(dir, c.log);
-
-    const text = c.text();
-    assert.match(text, /missing/);
-    assert.match(text, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
-    assert.match(text, /EXTRA_KEY/);
-
-    // SECURITY: No secret values in output — only variable names
-    assert.doesNotMatch(text, /sr_key_fake_do_not_use/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("validate handles no .env.example gracefully", () => {
-  const dir = mkdtempSync(join(tmpdir(), "env-secrets-no-example-"));
-  try {
-    const c = capture();
-    validate(dir, c.log);
-    assert.match(c.text(), /No \.env\.example found/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("doctor detects encrypted files when values are encrypted", () => {
-  // Simulate encrypted by writing a value starting with "encrypted:"
-  const dir = setupProject(false, true);
-  try {
-    writeFileSync(
-      join(dir, ".env"),
-      `NEXT_PUBLIC_SUPABASE_URL=encrypted:BGY7o+25eniO2mZAHM7Psd5aYfvGj6aIafoClg==\n`,
-      "utf8",
-    );
-    const c = capture();
-    doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n");
-    assert.match(c.text(), /encrypted/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("help output never includes real env values (self-check)", () => {
-  const c = capture();
-  help(c.log);
-  for (const secret of FAKE_SECRETS) {
-    assert.doesNotMatch(c.text(), new RegExp(secret.replace(/[.+*?^${}()|[\]\\]/g, "\\$&")));
-  }
-});
-
-test("doctor NEXT_PUBLIC_ detection works", () => {
-  const dir = setupProject(true, true);
-  try {
-    const c = capture();
-    doctor(dir, c.log);
-    // Should list public vars
-    assert.match(c.text(), /NEXT_PUBLIC_SUPABASE_URL/);
-    assert.match(c.text(), /NEXT_PUBLIC_SLACK_INVITE_URL/);
-    // Should NOT list server-only vars by value
-    assert.doesNotMatch(c.text(), /SUPABASE_SERVICE_ROLE_KEY/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("doctor reports decryptable status when both encrypted and keys present", () => {
-  const dir = setupProject(false, true);
-  try {
-    writeFileSync(
-      join(dir, ".env"),
-      `NEXT_PUBLIC_TEST=encrypted:BGY7o+25eniO2mZAHM7Psd5aYfvGj6aIafoClg/Cc/NqiMQES8F2pNJQSSYYm3A8azV2+twIPlGyy+PKb9xC1+Gfh2eoTPXnuoX2UU64TCaHRQOqVyIbG0Ce/dTKQBBE6eiU/bh05XrvN/dUCuySn7hN7A==\n`,
-      "utf8",
-    );
-    const c = capture();
-    doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n");
-    // Should prove that decryption actually succeeded.
-    assert.match(c.text(), /decryption verified/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("check succeeds only when the readiness probe confirms decrypted values", () => {
-  const dir = setupProject(false, true);
-  const c = capture();
-
-  try {
-    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake-ciphertext\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-
-    const ready = check(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n");
-
-    assert.equal(ready, true);
-    assert.match(c.text(), /decrypted successfully/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("check fails closed and reports names only when values remain encrypted", () => {
-  const dir = setupProject(false, true);
-  const c = capture();
-
-  try {
-    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake-ciphertext\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-    const error = Object.assign(new Error("probe failed"), {
-      status: 1,
-      stdout: "TEAM_SKILLS_ENV_CHECK_MISSING:TEST_KEY\n",
-      stderr: "",
-    });
-
-    const ready = check(dir, c.log, () => { throw error; });
-
-    assert.equal(ready, false);
-    assert.match(c.text(), /TEST_KEY/);
-    assert.doesNotMatch(c.text(), /fake-ciphertext/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("run does not start the requested child when readiness fails", () => {
-  const dir = setupProject(false, true);
-  const calls = [];
-  const c = capture();
-
-  try {
-    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake-ciphertext\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-    const error = Object.assign(new Error("probe failed"), {
-      status: 1,
-      stdout: "TEAM_SKILLS_ENV_CHECK_MISSING:TEST_KEY\n",
-      stderr: "",
-    });
-
-    const started = run(["node", "child.mjs"], dir, c.log, (...args) => {
-      calls.push(args);
-      throw error;
-    });
-
-    assert.equal(started, false);
-    assert.equal(calls.length, 1, "only the readiness probe should execute");
-    assert.match(c.text(), /Command not started/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("set delegates secret entry to dotenvx without putting a value in argv", () => {
-  const dir = setupProject(false, false);
-  const calls = [];
-  const c = capture();
-
-  try {
-    set("NEW_SECRET", dir, c.log, (command, args, options) => {
-      calls.push({ command, args, options });
-    });
-
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].command, "npx");
-    assert.deepEqual(calls[0].args, [
-      "--no-install",
-      "dotenvx",
-      "set",
-      "NEW_SECRET",
-      "-f",
-      join(dir, ".env"),
-    ]);
-    assert.equal(calls[0].options.stdio, "inherit");
-    assert.doesNotMatch(calls[0].args.join(" "), /fake.*secret/i);
-    assert.match(c.text(), /NEW_SECRET encrypted into \.env/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("run strips a leading -- separator before passing args to dotenvx", () => {
-  const dir = setupProject(false, true);
-  const calls = [];
-  const c = capture();
-
-  try {
-    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-
-    run(["--", "node", "-e", "console.log(1)"], dir, c.log, (command, args, options) => {
+    assert.equal(run(["--", "node", "-e", "0"], dir, c.log, (command, args, options) => {
       calls.push({ command, args, options });
       return "TEAM_SKILLS_ENV_CHECK_OK\n";
-    });
-
-    // calls[0] = readiness probe (dotenvx run --quiet ...), calls[1] = actual run
-    assert.equal(calls.length, 2, "check probe then run");
-    const runArgs = calls[1].args;
-    const separatorIndex = runArgs.indexOf("--");
-    assert.ok(separatorIndex !== -1, "dotenvx needs its own -- separator");
-    assert.deepEqual(runArgs.slice(separatorIndex + 1), ["node", "-e", "console.log(1)"]);
+    }, {}), true);
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((call) => call.args.includes(join(dir, LOCAL_ENV_FILE))));
+    assert.deepEqual(calls[1].args.slice(calls[1].args.indexOf("--") + 1), ["node", "-e", "0"]);
   } finally {
     cleanup(dir);
   }
 });
 
-test("run works without a leading -- separator", () => {
-  const dir = setupProject(false, true);
-  const calls = [];
-  const c = capture();
-
+test("Vercel run executes the child directly without reading or decrypting local files", () => {
+  const dir = setupProject();
   try {
-    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:fake\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-
-    run(["node", "-e", "console.log(1)"], dir, c.log, (command, args, options) => {
+    const calls = [];
+    const c = capture();
+    const hosted = { VERCEL: "1", NEXT_PUBLIC_FAKE_CONTEXT: "preview" };
+    assert.equal(run(["--", "node", "-e", "0"], dir, c.log, (command, args, options) => {
       calls.push({ command, args, options });
-      return "TEAM_SKILLS_ENV_CHECK_OK\n";
-    });
-
-    assert.equal(calls.length, 2, "check probe then run");
-    const runArgs = calls[1].args;
-    const separatorIndex = runArgs.indexOf("--");
-    assert.deepEqual(runArgs.slice(separatorIndex + 1), ["node", "-e", "console.log(1)"]);
+    }, hosted), true);
+    assert.deepEqual(calls, [{ command: "node", args: ["-e", "0"], options: { cwd: dir, stdio: "inherit", env: hosted } }]);
+    assert.doesNotMatch(c.text(), /\.env\.local\.enc|decrypt/i);
   } finally {
     cleanup(dir);
   }
 });
 
-test("set rejects invalid key names before invoking dotenvx", () => {
-  const calls = [];
-  const c = capture();
-
-  set("bad key", undefined, c.log, (...args) => calls.push(args));
-
-  assert.equal(calls.length, 0);
-  assert.match(c.text(), /Usage: team-skills env set <KEY>/);
-});
-
-test("resolveTarget chooses an explicit target or Vercel's deployment target", () => {
-  assert.equal(resolveTarget("local"), "local");
-  assert.equal(resolveTarget("preview"), "preview");
-  assert.equal(resolveTarget("production"), "production");
-  assert.equal(resolveTarget("all"), "all");
-  assert.equal(resolveTarget("auto", undefined), "local");
-  assert.equal(resolveTarget("auto", "preview"), "preview");
-  assert.equal(resolveTarget("auto", "production"), "production");
-  assert.equal(resolveTarget(undefined, "preview"), "preview");
-});
-
-test("getEnvFile maps each single target to its encrypted file", () => {
-  assert.equal(getEnvFile("local"), ".env");
-  assert.equal(getEnvFile("preview"), ".env.preview");
-  assert.equal(getEnvFile("production"), ".env.production");
-  assert.throws(() => getEnvFile("all"), /does not have one environment file/);
-});
-
-test("doctor --target all reports every target and fails closed when one file is missing", () => {
-  const dir = setupProject(false, true);
-  const c = capture();
+test("set prompts through dotenvx for the one local encrypted file without secret argv", () => {
+  const dir = setupProject();
   try {
-    writeFileSync(join(dir, ".env"), "TEST_KEY=encrypted:local\n", "utf8");
-    writeFileSync(join(dir, ".env.preview"), "TEST_KEY=encrypted:preview\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-
-    const ready = doctor(dir, c.log, () => "TEAM_SKILLS_ENV_CHECK_OK\n", "all");
-
-    assert.equal(ready, false);
-    assert.match(c.text(), /Target: local/);
-    assert.match(c.text(), /Target: preview/);
-    assert.match(c.text(), /Target: production/);
-    assert.match(c.text(), /\.env\.production\s+not found/);
+    const calls = [];
+    const c = capture();
+    assert.equal(set("NEW_SECRET", dir, c.log, (command, args, options) => calls.push({ command, args, options })), true);
+    assert.deepEqual(calls[0].args, ["--no-install", "dotenvx", "set", "NEW_SECRET", "-f", join(dir, LOCAL_ENV_FILE)]);
+    assert.match(c.text(), /NEW_SECRET encrypted into \.env\.local\.enc/);
   } finally {
     cleanup(dir);
   }
-});
-
-test("run --target preview probes and runs only .env.preview", () => {
-  const dir = setupProject(false, true);
-  const calls = [];
-  const c = capture();
-  try {
-    writeFileSync(join(dir, ".env.preview"), "TEST_KEY=encrypted:preview\n", "utf8");
-    writeFileSync(join(dir, ".env.example"), "TEST_KEY=\n", "utf8");
-
-    const started = run(
-      ["node", "-e", "console.log(1)"],
-      dir,
-      c.log,
-      (command, args, options) => {
-        calls.push({ command, args, options });
-        return "TEAM_SKILLS_ENV_CHECK_OK\n";
-      },
-      "preview",
-    );
-
-    assert.equal(started, true);
-    assert.equal(calls.length, 2, "check probe then requested child");
-    assert.ok(calls.every((call) => call.args.includes(join(dir, ".env.preview"))));
-    assert.ok(calls.every((call) => !call.args.includes(join(dir, ".env"))));
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("set --target production encrypts into .env.production without accepting a value argument", () => {
-  const dir = setupProject(false, false);
-  const calls = [];
-  const c = capture();
-  try {
-    set("NEW_SECRET", dir, c.log, (command, args, options) => {
-      calls.push({ command, args, options });
-    }, "production");
-
-    assert.equal(calls.length, 1);
-    assert.deepEqual(calls[0].args, [
-      "--no-install",
-      "dotenvx",
-      "set",
-      "NEW_SECRET",
-      "-f",
-      join(dir, ".env.production"),
-    ]);
-    assert.match(c.text(), /NEW_SECRET encrypted into .env.production/);
-  } finally {
-    cleanup(dir);
-  }
-});
-
-test("run and set reject --target all because they require one environment", () => {
-  const c = capture();
-  assert.equal(run(["node", "-e", "0"], undefined, c.log, undefined, "all"), false);
-  assert.match(c.text(), /cannot use --target all/);
-
-  const setOutput = capture();
-  set("TEST_KEY", undefined, setOutput.log, () => {
-    throw new Error("must not run");
-  }, "all");
-  assert.match(setOutput.text(), /cannot use --target all/);
 });

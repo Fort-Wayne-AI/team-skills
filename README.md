@@ -4,67 +4,48 @@ Portable, project-local skills shared across Fort Wayne AI repositories.
 
 ## Install in a consumer project
 
-This is a public GitHub repository. Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
+Install the current tagged release over HTTPS—no GitHub token or SSH key is required:
 
 ```bash
-npm install --save-dev github:Fort-Wayne-AI/team-skills#v0.7.0
+npm install --save-dev github:Fort-Wayne-AI/team-skills#v1.0.0
 npx team-skills setup
 ```
 
-`setup` installs each skill physically into `.agents/skills/` (single source of truth) and creates symlinks from `.claude/skills/` and `.hermes/skills/` pointing back to `.agents/skills/`. It also adds a managed pointer to `AGENTS.md`. After installation, it reads from local files and needs no external service, token, or network access.
+`setup` installs each skill physically into `.agents/skills/` (single source of truth) and creates symlinks from `.claude/skills/` and `.hermes/skills/`. It also maintains a pointer in `AGENTS.md`.
 
-> `package.json` intentionally keeps `"private": true`: the project is distributed from public GitHub releases, not published to the npm registry.
+> `package.json` remains `"private": true`: this package is distributed from GitHub tags rather than the npm registry.
 
 ## Commands
 
 ```bash
 npx team-skills setup [--project <path>] [--force]
-npx team-skills env doctor [--target local|preview|production|all|auto]
-npx team-skills env validate [--target local|preview|production|all|auto]
-npx team-skills env check [--target local|preview|production|all|auto]
-npx team-skills env run [--target local|preview|production|auto] -- <command>
-npx team-skills env set [--target local|preview|production|auto] <KEY>
+npx team-skills env doctor
+npx team-skills env validate
+npx team-skills env check
+npx team-skills env run -- <command> [arg...]
+npx team-skills env set <KEY>
 ```
 
-### `setup`
+The environment contract is intentionally split by runtime:
 
-Copies each bundled skill (raw Markdown) into the consumer project's `.agents/skills/` directory, then symlinks `.claude/skills/` and `.hermes/skills/` to point at `.agents/skills/`. Files are read directly from disk — no Notion, no authentication, no network calls.
+- **Local development:** one committed encrypted file, `.env.local.enc`, decrypted only through `team-skills env` with an uncommitted `.env.keys` file.
+- **Vercel Preview and Production:** Vercel Environment Variables are authoritative. `team-skills env run` detects Vercel and directly runs the child command without reading, validating, or decrypting local dotenvx configuration.
 
-| Flag | Purpose |
-|---|---|
-| `--project <path>` | Target project directory (default: current working directory) |
-| `--force` | Overwrite existing skill directories even if unmanaged |
-
-### `env`
-
-Encrypted environment variable management via `@dotenvx/dotenvx`. See the `environment-secrets` skill for full documentation.
+Never commit `.env.keys` or upload dotenvx private keys to Vercel. Supply every build-time `NEXT_PUBLIC_*` value in the appropriate Vercel scope before `next build` begins.
 
 ## Shared skills
 
-### `project-conventions`
-
-Versioning, naming, documentation, and release standards for every Fort Wayne AI project. Installed as plain Markdown — agents read it locally.
-
-### `software-development-lifecycle`
-
-Worktree-based feature development, pre-PR review and fixes, PR/stacking rules, required CI behavior, task-status integration with Notion, and deliberate manual releases and deployments.
-
-### `notion-cli`
-
-Official-CLI workflow for reading, querying, creating, and updating Notion content. Requires `NOTION_API_TOKEN`; `ntn@0.19.0` is installed as a package dependency and invoked with `npx --no-install ntn`. The bundled native CLI supports macOS, Linux, and Windows on `x64` and `arm64`.
-
-### `task-management`
-
-Verified schema and safe create/update workflows for the Fort Wayne AI Notion Tasks data source. Loads `notion-cli` first.
-
-### `environment-secrets`
-
-Target-aware encrypted `.env` management via `@dotenvx/dotenvx`. Supports local `.env`, Preview `.env.preview`, and Production `.env.production`; `auto` chooses from `VERCEL_ENV` while `all` verifies every target. Provides `doctor` (proves decryption), `validate` (names match `.env.example`), `check` (fails closed), `run` (decrypt and execute one target), and `set` (masked prompt, never accepts values in argv).
+- **project-conventions** — versioning, naming, documentation, and release standards.
+- **software-development-lifecycle** — worktree-based development, review, PR, CI, previews, and release workflow.
+- **notion-cli** — official `ntn` CLI workflow; requires `NOTION_API_TOKEN` and bundles `ntn@0.19.0` for macOS, Linux, and Windows on `x64` and `arm64`.
+- **task-management** — verified Fort Wayne AI Notion Tasks schema and safe task workflows.
+- **environment-secrets** — local encrypted dotenvx configuration and Vercel-hosted configuration boundary.
 
 ## Development
 
 ```bash
 npm install
 npm test
+npm pack --dry-run
 node bin/team-skills.mjs setup --project example/consumer-project
 ```

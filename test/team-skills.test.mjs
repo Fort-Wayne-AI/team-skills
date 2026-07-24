@@ -15,7 +15,7 @@ test("CLI routes env commands through the packaged entrypoint", () => {
 
   assert.match(output, /team-skills env — encrypted environment variable management/);
   assert.match(output, /team-skills env doctor/);
-  assert.match(output, /team-skills env run <command>/);
+  assert.match(output, /team-skills env run -- <command>/);
 });
 
 test("CLI rejects secret values passed to env set as arguments", () => {
@@ -33,7 +33,7 @@ test("CLI rejects secret values passed to env set as arguments", () => {
   );
 });
 
-test("CLI accepts --target and rejects unknown target names before running dotenvx", () => {
+test("CLI rejects the retired --target option before running dotenvx", () => {
   assert.throws(
     () => execFileSync(process.execPath, [cli, "env", "doctor", "--target", "not-a-target"], {
       encoding: "utf8",
@@ -41,13 +41,14 @@ test("CLI accepts --target and rejects unknown target names before running doten
     }),
     (error) => {
       assert.equal(error.status, 1);
-      assert.match(error.stderr, /Unknown environment target: not-a-target/);
+      assert.match(error.stderr, /no longer supports --target/);
+      assert.match(error.stderr, /\.env\.local\.enc/);
       return true;
     },
   );
 });
 
-test("CLI leaves --target after the run separator for the child command", () => {
+test("CLI leaves a child --target argument after the run separator alone", () => {
   assert.throws(
     () => execFileSync(process.execPath, [cli, "env", "run", "--", "node", "-e", "0", "--target", "all"], {
       encoding: "utf8",
@@ -55,8 +56,8 @@ test("CLI leaves --target after the run separator for the child command", () => 
     }),
     (error) => {
       assert.equal(error.status, 1);
-      assert.match(error.stdout, /\.env not found/);
-      assert.doesNotMatch(error.stdout, /cannot use --target all/);
+      assert.match(error.stdout, /\.env\.local\.enc not found/);
+      assert.doesNotMatch(error.stderr, /no longer supports --target/);
       return true;
     },
   );
@@ -88,7 +89,7 @@ test("setup installs skills into .agents (physical) and symlinks from .claude an
       assert.match(readFileSync(join(physicalDir, "SKILL.md"), "utf8"), new RegExp(`name: ${skill}`));
       assert.deepEqual(
         JSON.parse(readFileSync(join(physicalDir, ".team-skills.json"), "utf8")),
-        { package: "@fort-wayne-ai/team-skills", version: "0.7.0", skill },
+        { package: "@fort-wayne-ai/team-skills", version: "1.0.0", skill },
       );
 
       // .claude and .hermes: symlinks
@@ -191,7 +192,7 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
   assert.equal(packageMetadata.dependencies.ntn, "0.19.0");
-  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v0\.7\.0/);
+  assert.match(readme, /github:Fort-Wayne-AI\/team-skills#v1\.0\.0/);
   assert.match(readme, /macOS, Linux, and Windows on `x64` and `arm64`/);
   assert.match(notionSkill, /official Notion CLI, `ntn`/);
   assert.match(notionSkill, /NOTION_API_TOKEN/);
@@ -226,6 +227,21 @@ test("Notion skills document the supported CLI, credential, and verified Tasks s
   assert.match(taskSkill, /In Progress.*Not started/);
   assert.match(taskSkill, /Status = Done/);
   assert.match(taskSkill, /skill for \*when\*/);
+});
+
+test("environment documentation enforces the local dotenvx and Vercel boundary", () => {
+  const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+  const skill = readFileSync(join(repoRoot, "skills", "environment-secrets", "SKILL.md"), "utf8");
+  const workflows = readFileSync(
+    join(repoRoot, "skills", "environment-secrets", "references", "workflows.md"),
+    "utf8",
+  );
+  const docs = `${readme}\n${skill}\n${workflows}`;
+
+  assert.match(docs, /\.env\.local\.enc/);
+  assert.match(docs, /Vercel Environment Variables/);
+  assert.match(docs, /upload dotenvx private keys|Do not add a dotenvx loader, `.env\.keys`, or private key to Vercel/i);
+  assert.doesNotMatch(docs, /\.env\.preview|\.env\.production|--target|@dotenvx\/next-env/);
 });
 
 test("packed consumer can invoke the documented package-local ntn command", () => {
