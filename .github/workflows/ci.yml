@@ -33,6 +33,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install disposable SOPS integration-test prerequisites
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends age
+          version=3.13.3
+          asset="sops-v${version}.linux.amd64"
+          expected="e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b"
+          curl --fail --silent --show-error --location "https://github.com/getsops/sops/releases/download/v${version}/${asset}" --output /tmp/sops
+          printf '%s  %s\n' "$expected" /tmp/sops | sha256sum --check --status
+          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
+          sops --version --check-for-updates
+          age-keygen --version
+
       - name: Run tests
         run: npm test
 

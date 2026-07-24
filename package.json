@@ -1,6 +1,6 @@
 {
   "name": "@fort-wayne-ai/team-skills",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Shared, project-local agent skills for Fort Wayne AI",
   "type": "module",
@@ -11,7 +11,8 @@
     "bin/",
     "lib/",
     "skills/",
-    "templates/"
+    "templates/",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --test test/**/*.test.mjs",
