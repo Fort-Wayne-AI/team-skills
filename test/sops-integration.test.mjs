@@ -64,10 +64,18 @@ test("actual SOPS materialization uses a disposable age identity and never print
     encryptFixture(root);
     const enrolled = vault(root, home, ["enroll", "--from", identity]);
     assert.doesNotMatch(enrolled, new RegExp(fakeSecret));
+    const doctor = vault(root, home, ["doctor"]);
+    assert.match(doctor, /official SOPS\s+✓ sops/);
+    assert.match(doctor, /age identity\s+✓ enrolled/);
+    const checked = vault(root, home, ["check", "development"]);
+    assert.doesNotMatch(checked, new RegExp(fakeSecret));
     const output = vault(root, home, ["materialize", "development"]);
     assert.doesNotMatch(output, new RegExp(fakeSecret));
     assert.equal(readFileSync(join(root, ".env.local"), "utf8"), `TOKEN=${fakeSecret}\n`);
     assert.equal(lstatSync(join(root, ".env.local")).mode & 0o777, 0o600);
+    const cleaned = vault(root, home, ["clean", "development"]);
+    assert.doesNotMatch(cleaned, new RegExp(fakeSecret));
+    assert.equal(existsSync(join(root, ".env.local")), false);
   } finally { cleanup(root); }
 });
 
