@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { check, clean, list, loadManifest, materialize } from "../lib/vault.mjs";
+import { check, clean, doctor, list, loadManifest, materialize } from "../lib/vault.mjs";
 
 const FAKE_SECRET = "fake-secret-value-must-not-appear";
 
@@ -72,6 +72,25 @@ test("manifest rejects source traversal and destinations outside the repository"
   try {
     assert.throws(() => loadManifest(second), /must stay inside the repository/);
   } finally { cleanup(second); }
+});
+
+test("doctor verifies official SOPS from PATH and gives the official install URL when missing", () => {
+  const root = project();
+  try {
+    const present = capture();
+    const officialSops = (command, args) => {
+      assert.equal(command, "sops");
+      assert.deepEqual(args, ["--version"]);
+      return "sops 3.13.3\n";
+    };
+    assert.equal(doctor(root, present.log, officialSops), false);
+    assert.match(present.text(), /official SOPS\s+✓ sops 3\.13\.3/);
+    assert.doesNotMatch(present.text(), /packaged SOPS|TEAM_SKILLS_SOPS_BINARY/);
+
+    const absent = capture();
+    assert.equal(doctor(root, absent.log, () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); }), false);
+    assert.match(absent.text(), /https:\/\/getsops\.io\/docs\/installation\//);
+  } finally { cleanup(root); }
 });
 
 test("check validates an encrypted source and ignored destination without leaking decrypted content", () => {

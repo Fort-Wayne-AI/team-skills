@@ -16,6 +16,17 @@ Fort Wayne AI repositories use a repository-backed SOPS + age vault for develope
 5. Never overwrite an unmanaged plaintext file; resolve it with the repository owner.
 6. Vercel Preview and Production use Vercel Environment Variables. Do not enroll an age identity or decrypt a vault in Vercel.
 
+## Install SOPS on the current machine
+
+SOPS is an **official system prerequisite**, not an npm dependency and not a binary bundled by team-skills.
+
+1. Inspect the current OS, architecture, available package managers, and whether `sops --version` already works.
+2. If missing or unsuitable, use the official instructions: <https://getsops.io/docs/installation/>.
+3. Choose the documented installation route appropriate to this execution environment; do not use an unofficial npm wrapper and do not write a custom downloader.
+4. Verify with `sops --version`, then run `npx team-skills vault doctor`.
+
+Agents may use their environment knowledge to choose an official installation method. Before installing system software, follow the repository/user approval policy and report the command/result. Do not infer an installation command from this skill when the official documentation is unavailable.
+
 ## Consumer layout
 
 ```text
@@ -30,6 +41,7 @@ vault/                         # committed SOPS ciphertext
 ## Safe commands
 
 ```bash
+sops --version
 npx team-skills vault doctor
 npx team-skills vault list
 npx team-skills vault check development
@@ -38,7 +50,7 @@ npx team-skills vault clean development
 npx team-skills vault enroll --from /approved/local/identity.txt
 ```
 
-`enroll` copies a private identity from an approved local file with mode `0600`. Do not send that file through chat or add it to Git. `materialize` uses an atomic owner-only write and creates a non-secret receipt so `clean` can prove ownership.
+`enroll` copies a private identity from an approved local file with mode `0600`. Do not send that file through chat or add it to Git. `materialize` invokes the official `sops` command from the local environment, uses an atomic owner-only write, and creates a non-secret receipt so `clean` can prove ownership.
 
 ## What belongs here
 

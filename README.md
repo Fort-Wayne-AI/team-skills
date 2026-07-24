@@ -2,11 +2,17 @@
 
 Portable, project-local skills for Fort Wayne AI projects.
 
-## Release status
+## SOPS + age developer vault
 
-The SOPS + age vault is being prepared for the next major release. It is **not yet published**: a production release requires six checksum-verified official SOPS platform packages for Linux/macOS/Windows on x64/ARM64. The tool intentionally refuses a global SOPS binary or a runtime download, so do not install this unreleased branch for production vault materialization.
+`team-skills vault` is a repository-backed developer-secrets workflow. Consumer projects commit SOPS-encrypted files under `vault/`, public recipient configuration, and a non-secret `.vault.json` manifest. The private age identity is enrolled locally and never committed.
 
-Once that release exists, this section will name its exact immutable Git tag. Until then, consumer projects should keep their existing released team-skills pin.
+### Prerequisite: official SOPS
+
+SOPS is installed and maintained on each developer/agent machine as an official system tool. It is **not** bundled by this package, downloaded at runtime, or replaced with an unofficial npm wrapper.
+
+1. Run `sops --version`.
+2. If it is unavailable, follow the official instructions for the current OS and package manager: <https://getsops.io/docs/installation/>.
+3. Confirm the installation with `sops --version` and run `npx team-skills vault doctor`.
 
 ```bash
 npx team-skills vault doctor

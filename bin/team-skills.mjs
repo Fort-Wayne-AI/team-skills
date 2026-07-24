@@ -104,7 +104,7 @@ async function vault(args) {
     const from = optionValue(rest, "--from");
     if (rest.length !== 2 || !from || !enroll(from)) process.exitCode = 1;
   } else if (["init", "edit", "updatekeys", "rotate-key"].includes(command)) {
-    throw new Error(`vault ${command} is intentionally unavailable until the pinned, packaged SOPS binary is released. It must not fall back to a runtime download or a global binary.`);
+    throw new Error(`vault ${command} is not implemented yet. Use the developer-secrets skill and official SOPS documentation for an approved manual workflow.`);
   } else {
     throw new Error(`Unknown vault command: ${command}`);
   }
