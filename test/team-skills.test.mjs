@@ -66,7 +66,7 @@ test("package metadata, documentation, and CI describe the vault release", () =>
   const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
   const workflow = readFileSync(join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
-  assert.equal(pkg.version, "1.0.0");
+  assert.equal(pkg.version, "0.8.0");
   assert.match(readme, /team-skills vault/);
   assert.doesNotMatch(readme, /dotenvx|team-skills env/);
   assert.match(workflow, /npm test/);
