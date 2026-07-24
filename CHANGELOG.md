@@ -6,6 +6,8 @@
 
 - `team-skills vault` command surface for repository-backed SOPS + age developer secrets.
 - `.vault.json` manifest validation and non-secret entry listing.
+- `init` (empty encrypted entry), TTY-only SOPS `edit`, and `updatekeys` for committed recipient changes.
+- Disposable fake-age integration tests covering actual SOPS initialization, enrollment, materialization, and recipient updates.
 - Safe local materialization with Git-ignore checks, symlink refusal, atomic `0600` writes, and ownership receipts for cleanup.
 - `developer-secrets` shared skill for agent-safe and developer-safe vault workflows.
 

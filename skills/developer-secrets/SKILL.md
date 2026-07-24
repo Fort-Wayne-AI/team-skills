@@ -44,13 +44,16 @@ vault/                         # committed SOPS ciphertext
 sops --version
 npx team-skills vault doctor
 npx team-skills vault list
+npx team-skills vault init vault/env/development.env.sops
+npx team-skills vault edit development
 npx team-skills vault check development
 npx team-skills vault materialize development
 npx team-skills vault clean development
 npx team-skills vault enroll --from /approved/local/identity.txt
+npx team-skills vault updatekeys
 ```
 
-`enroll` copies a private identity from an approved local file with mode `0600`. Do not send that file through chat or add it to Git. `materialize` invokes the official `sops` command from the local environment, uses an atomic owner-only write, and creates a non-secret receipt so `clean` can prove ownership.
+`init` creates an empty encrypted file using the committed `.sops.yaml` recipient configuration. `edit` requires an interactive terminal and delegates secure value editing to SOPS; non-interactive agents and CI are intentionally refused. `updatekeys` applies committed recipient changes to all manifest entries without printing values. `enroll` copies a private identity from an approved local file with mode `0600`. Do not send identity files through chat or add them to Git. `materialize` invokes the official `sops` command from the local environment, uses an atomic owner-only write, and creates a non-secret receipt so `clean` can prove ownership.
 
 ## What belongs here
 
@@ -60,4 +63,12 @@ Not appropriate: passwords, recovery codes, user data, large binaries, backups, 
 
 ## Rotation
 
-A suspected master-identity compromise means both re-encrypting vault entries to a new recipient **and** rotating underlying credentials that could have been decrypted. Treat it as an explicit incident workflow, not an ordinary command.
+`team-skills vault rotate-key` is deliberately **not automated**. A suspected master-identity compromise is an incident workflow:
+
+1. Generate the replacement age identity only on an authorized machine.
+2. Store its private identity in the approved FWAI 1Password vault before using it; commit only the public recipient.
+3. Add the new recipient to committed `.sops.yaml`, run `team-skills vault updatekeys`, and verify access from an authorized machine.
+4. Remove the old recipient, run `updatekeys` again, and verify every entry.
+5. Rotate underlying credentials that the old identity may have exposed.
+
+Never generate, paste, or retain the organization private identity in Git, CI, agent context, terminal logs, tickets, or chat.

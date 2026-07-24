@@ -17,6 +17,9 @@ SOPS is installed and maintained on each developer/agent machine as an official 
 ```bash
 npx team-skills vault doctor
 npx team-skills vault list
+npx team-skills vault init vault/env/development.env.sops
+npx team-skills vault edit development
+npx team-skills vault updatekeys
 npx team-skills vault check development
 npx team-skills vault materialize development
 npx team-skills vault clean development

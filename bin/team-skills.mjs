@@ -28,6 +28,9 @@ function usage(error) {
 Vault commands:
   doctor
   list
+  init <vault-path>
+  edit <entry>
+  updatekeys
   check <entry>
   materialize <entry> [destination]
   clean <entry>
@@ -86,7 +89,7 @@ function installSkills(project, force) {
 }
 
 async function vault(args) {
-  const { check, clean, doctor, enroll, list, loadManifest, materialize } = await import("../lib/vault.mjs");
+  const { check, clean, doctor, edit, enroll, init, list, loadManifest, materialize, updatekeys } = await import("../lib/vault.mjs");
   const [command, ...rest] = args;
   if (!command || command === "help") return usage(false);
   if (command === "doctor") {
@@ -94,6 +97,8 @@ async function vault(args) {
   } else if (command === "list") {
     if (rest.length) throw new Error("Usage: team-skills vault list");
     for (const entry of list(loadManifest())) console.log(`${entry.name}\t${entry.source}\t→ ${entry.destination}\t${entry.format}`);
+  } else if (command === "init") {
+    if (rest.length !== 1 || !init(rest[0])) process.exitCode = 1;
   } else if (command === "check") {
     if (rest.length !== 1 || !check(rest[0])) process.exitCode = 1;
   } else if (command === "materialize") {
@@ -103,8 +108,12 @@ async function vault(args) {
   } else if (command === "enroll") {
     const from = optionValue(rest, "--from");
     if (rest.length !== 2 || !from || !enroll(from)) process.exitCode = 1;
-  } else if (["init", "edit", "updatekeys", "rotate-key"].includes(command)) {
-    throw new Error(`vault ${command} is not implemented yet. Use the developer-secrets skill and official SOPS documentation for an approved manual workflow.`);
+  } else if (command === "edit") {
+    if (rest.length !== 1 || !edit(rest[0])) process.exitCode = 1;
+  } else if (command === "updatekeys") {
+    if (rest.length || !updatekeys()) process.exitCode = 1;
+  } else if (command === "rotate-key") {
+    throw new Error("vault rotate-key is a high-risk incident workflow and is not automated. Follow the developer-secrets recovery runbook; generate and store the replacement private identity in the approved 1Password vault before changing recipients.");
   } else {
     throw new Error(`Unknown vault command: ${command}`);
   }
