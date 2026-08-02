@@ -34,8 +34,8 @@ Vercel Preview and Production are deliberately outside this system: use Vercel E
 
 - **project-conventions** — naming, versioning, and release standards.
 - **software-development-lifecycle** — worktrees, reviews, PRs, CI, previews, and staged releases.
-- **notion-cli** — official `ntn` CLI workflow.
-- **task-management** — Fort Wayne AI Notion task workflows.
+- **github-issues** — GitHub Issues task tracking with the Fort-Wayne-AI label taxonomy.
+- **task-management** — FWAI task-tracking schema and safe project-issue workflows.
 - **developer-secrets** — SOPS + age developer vault policy and safe materialization workflow.
 
 ## Development

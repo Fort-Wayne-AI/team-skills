@@ -20,7 +20,7 @@ git worktree add -b feat/child-change ../worktrees/project-child feat/parent-cha
 Include the task ID in the branch name when it adds context:
 
 ```bash
-git worktree add -b feat/FWAI-42-short-description ../worktrees/project-FWAI-42 origin/main
+git worktree add -b feat/42-short-description ../worktrees/project-42 origin/main
 ```
 
 Before making changes, verify the worktree and branch:
@@ -42,19 +42,19 @@ Never force-remove a worktree or force-delete a branch until you have verified t
 
 ## Task integration
 
-The `task-management` skill provides all commands and scripts for reading, updating, and batching Notion tasks. Load it when you need to find a task, update its status, or batch completed work for release notes.
+The `task-management` skill provides all commands for reading, updating, and batching GitHub issues. Load it when you need to find an issue, update its status, or batch completed work for release notes.
 
-Key scripts available in the installed skill directory:
+Key commands:
 
-| SDLC action | Script / command | Location |
+| SDLC action | Command | Reference |
 |---|---|---|
-| Find a task by title, status, or project | `task-management` query commands | `task-management` SKILL.md |
-| Mark work started (In Progress) | `scripts/task-update-status.sh <page-id> "In Progress" "Not started"` | `task-management/scripts/` |
-| Mark PR in review (In Review) | `scripts/task-update-status.sh <page-id> "In Review" "Not started"` | `task-management/scripts/` |
-| Mark task done after merge | `scripts/task-update-status.sh <page-id> "Done" "Done"` | `task-management/scripts/` |
-| Batch completed tasks for release notes | `scripts/task-batch-completed.sh <data-source-id> [since-date]` | `task-management/scripts/` |
+| Find an issue by title, label, or milestone | `gh issue list` | `github-issues` SKILL.md |
+| Mark work started (in-progress) | `gh issue edit <n> -R … --add-label "status:in-progress" --remove-label "status:todo"` | `github-issues` SKILL.md |
+| Mark PR in review | `gh issue edit <n> -R … --add-label "status:in-review" --remove-label "status:in-progress"` | `github-issues` SKILL.md |
+| Mark issue done after merge | `gh issue close <n> -R … -c "Merged."` | `github-issues` SKILL.md |
+| Batch completed issues for release notes | `gh issue list -R … -s closed -l "status:done" --search "closed:>YYYY-MM-DD"` | `github-issues` SKILL.md |
 
-Do not inline `ntn` commands for task operations in this reference — the `task-management` skill owns the *how*. The *when* is documented in the SDLC SKILL.md change lifecycle and task-integration table.
+Do not inline `gh` commands for task operations in this reference — the `task-management` skill owns the *how*. The *when* is documented in the SDLC SKILL.md change lifecycle and task-integration table.
 
 ## Pre-PR review checklist
 
@@ -80,7 +80,7 @@ For a stacked PR, replace `origin/main` with the parent branch. Then confirm:
 - User-facing behavior, configuration, and operational docs are current.
 - Generated files, debug output, credentials, and local artifacts are absent.
 - Commit history and PR size are understandable to a reviewer.
-- **If this change has a Notion task, the task ID is referenced in the PR body.**
+- **If this change has a GitHub issue, the issue number is referenced in the PR body.**
 
 Fix every material finding before opening the PR. Rerun checks affected by each fix.
 
@@ -107,7 +107,7 @@ A useful PR body contains:
 - **Validation:** exact checks and meaningful smoke-test evidence.
 - **Risks:** security, data, compatibility, or rollout concerns.
 - **Dependencies:** parent PR and merge order for a stack.
-- **Task:** Notion task ID or link when the change originates from the task tracker.
+- **Task:** GitHub issue link (e.g. `Closes #42`) when the change originates from the issue tracker.
 - **Release notes:** user-visible wording or `None` with a reason.
 
 After creating or updating a PR, inspect current checks rather than assuming the push triggered CI:
@@ -208,7 +208,7 @@ npx vercel list fort-wayne-ai-hub --scope angie-carel
 
 - Decide which merged PRs belong together and explain exclusions when useful.
 - Choose the SemVer impact using `project-conventions`.
-- Draft notes from merged behavior, not commit titles alone. **Include references to completed Notion tasks when useful for context.**
+- Draft notes from merged behavior, not commit titles alone. **Include references to completed GitHub issues when useful for context.**
 - Call out migrations, environment/configuration changes, deprecations, and breaking changes.
 - Verify the release commit is on `main` and its CI is green.
 - Create or identify a release-candidate deployment for the exact release commit and complete smoke tests. Prefer a staged Production deployment when available.

@@ -1,8 +1,10 @@
-# Fort Wayne AI Tasks Schema
+# Fort Wayne AI GitHub Issues Schema
 
 Source: GitHub Issues on `Fort-Wayne-AI/fort-wayne-ai-web-hub`. All active project tasks live here.
 
 ## Required labels
+
+Create these labels once in the repository (they persist):
 
 ### Status (workflow state)
 
@@ -12,7 +14,7 @@ Source: GitHub Issues on `Fort-Wayne-AI/fort-wayne-ai-web-hub`. All active proje
 | `status:in-progress` | Work has begun | Set when the first commit lands. |
 | `status:in-review` | PR is open for review | Set when the PR is created. |
 | `status:blocked` | Cannot proceed | Set when blocked on a dependency or decision. |
-| `status:done` | Completed — applied when closing | Set when closing after merge. |
+| `status:done` | Completed | Set when closing the issue after merge. |
 
 ### Priority
 
@@ -37,12 +39,31 @@ Milestones group issues by target sprint or release window. Use the `August 2026
 
 ## Assignees
 
-GitHub handles (e.g. `aualdrich`). Do not infer from a display name.
+GitHub handles (e.g. `aualdrich`). Unlike Notion, these are the same usernames used across the platform. Do not infer from a display name.
 
-## Issue author
+## Issue body template
 
-The GitHub user who created the issue. Preserved automatically by GitHub; do not need to set.
+A well-formed issue includes:
 
-## Issue body
+```markdown
+**Goal:** One sentence describing the desired outcome.
 
-A well-formed issue includes a goal, acceptance criteria, and context. See `github-issues` for the template.
+**Acceptance criteria:**
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+**Context:** Any relevant background, links, or constraints.
+```
+
+## Mapping from Notion (deprecated)
+
+| Notion property | Notion type | GitHub equivalent |
+|---|---|---|
+| `Task` | `title` | Issue title |
+| `Status` | `status` | `status:*` label |
+| `Done` | `status` | Closing the issue (closed state) |
+| `Priority` | `select` | `priority:*` label |
+| `Due Date` | `date` | Milestone |
+| `Assignee` | `people` | GitHub assignee |
+| `Reporter` | `people` | Issue author |
+| `Project` | `relation` | Repository + milestone |

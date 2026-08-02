@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.8.0 — unreleased
+## 0.9.0 — unreleased
+
+### Added
+
+- `github-issues` skill — GitHub Issues-based task tracking with the Fort-Wayne-AI label taxonomy (`status:*`, `priority:*`, `type:*`).
+
+### Changed
+
+- **task-management** — rewritten to use GitHub Issues (`github-issues` skill) instead of Notion. Task scripts replaced with direct `gh issue` commands.
+- **software-development-lifecycle** — all Notion task-ID references replaced with GitHub issue numbers and `gh` CLI commands. Integration table and task lifecycle updated.
+
+### Removed
+
+- **notion-cli** skill — retired. The Notion `ntn` CLI and data source references are no longer used for project task tracking. Active tasks now live in GitHub Issues on `Fort-Wayne-AI/fort-wayne-ai-web-hub`.
+
+## 0.8.0
 
 ### Added
 
