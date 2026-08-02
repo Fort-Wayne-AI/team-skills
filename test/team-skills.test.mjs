@@ -46,7 +46,7 @@ test("CLI lists non-secret vault metadata", () => {
   } finally { cleanup(root); }
 });
 
-test("setup installs developer-secrets and removes obsolete managed environment skill", () => {
+test("setup installs current skills and omits retired skills", () => {
   const root = mkdtempSync(join(tmpdir(), "team-skills-consumer-"));
   try {
     execFileSync(process.execPath, [cli, "setup", "--project", root], { encoding: "utf8" });
@@ -54,26 +54,35 @@ test("setup installs developer-secrets and removes obsolete managed environment 
     assert.equal(existsSync(developer), true);
     assert.equal(lstatSync(developer).isSymbolicLink(), false);
     assert.match(readFileSync(join(developer, "SKILL.md"), "utf8"), /name: developer-secrets/);
+    const githubIssues = join(root, ".agents", "skills", "github-issues");
+    assert.equal(existsSync(githubIssues), true);
+    assert.match(readFileSync(join(githubIssues, "SKILL.md"), "utf8"), /name: github-issues/);
     assert.equal(existsSync(join(root, ".agents", "skills", "environment-secrets")), false);
+    assert.equal(existsSync(join(root, ".agents", "skills", "notion-cli")), false);
     assert.equal(lstatSync(join(root, ".claude", "skills", "developer-secrets")).isSymbolicLink(), true);
+    assert.equal(lstatSync(join(root, ".hermes", "skills", "github-issues")).isSymbolicLink(), true);
     const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
     assert.match(agents, /developer-secrets/);
-    assert.doesNotMatch(agents, /environment-secrets|dotenvx/);
+    assert.match(agents, /github-issues/);
+    assert.doesNotMatch(agents, /environment-secrets|dotenvx|notion-cli/);
   } finally { cleanup(root); }
 });
 
-test("package metadata, documentation, and CI describe the vault release", () => {
+test("package metadata, documentation, and CI describe the current release", () => {
   const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
   const workflow = readFileSync(join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
-  assert.equal(pkg.version, "0.8.0");
+  assert.equal(pkg.version, "0.9.1");
+  assert.equal(pkg.dependencies?.ntn, undefined);
   assert.match(readme, /team-skills vault/);
+  assert.match(readme, /github-issues/);
+  assert.doesNotMatch(readme, /notion-cli|official `ntn` CLI/);
   assert.doesNotMatch(readme, /dotenvx|team-skills env/);
   assert.match(workflow, /npm test/);
   assert.match(workflow, /npm pack --dry-run/);
 });
 
-test("packed consumer can invoke package-local ntn without global binaries", () => {
+test("packed consumer can install and invoke team-skills setup", () => {
   const project = mkdtempSync(join(tmpdir(), "team-skills-packed-consumer-"));
   const isolatedBin = join(project, ".test-bin");
   mkdirSync(isolatedBin);
@@ -85,7 +94,8 @@ test("packed consumer can invoke package-local ntn without global binaries", () 
     const pack = execFileSync(process.execPath, [npmCli, "pack", "--json", "--pack-destination", project], { cwd: repoRoot, encoding: "utf8" });
     const tarball = join(project, JSON.parse(pack)[0].filename);
     execFileSync(process.execPath, [npmCli, "install", "--save-dev", tarball], { cwd: project, env: { ...process.env, PATH: standardPath }, stdio: "ignore" });
-    const output = execFileSync(process.execPath, [npmCli, "exec", "--no", "--", "ntn", "--version"], { cwd: project, env: { ...process.env, PATH: standardPath }, encoding: "utf8" });
-    assert.match(output, /^ntn 0\.19\.0\s*$/);
+    execFileSync(process.execPath, [npmCli, "exec", "--no", "--", "team-skills", "setup"], { cwd: project, env: { ...process.env, PATH: standardPath }, encoding: "utf8" });
+    assert.equal(existsSync(join(project, ".agents", "skills", "github-issues", "SKILL.md")), true);
+    assert.equal(existsSync(join(project, ".agents", "skills", "notion-cli")), false);
   } finally { cleanup(project); }
 });
