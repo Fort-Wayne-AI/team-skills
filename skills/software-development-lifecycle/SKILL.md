@@ -45,7 +45,7 @@ All project work originates from GitHub Issues. The `task-management` skill hold
 | Merge | Mark work complete | Close the issue (label → `status:done`) |
 | Release | Batch completed issues into release notes | `gh issue list -s closed -l "status:done"` |
 
-Use `HOME=/root gh issue list -R Fort-Wayne-AI/fort-wayne-ai-web-hub --search "label:status:in-progress" --json title,number,labels` to find issues and `HOME=/root gh issue edit <number> -R Fort-Wayne-AI/fort-wayne-ai-web-hub --add-label "…"` to update them. See `task-management` for the exact label taxonomy and reference commands.
+Use `gh issue list --search "label:status:in-progress" --json title,number,labels` to find issues and `gh issue edit <number> --add-label "…"` to update them. See `task-management` for the exact label taxonomy and reference commands.
 
 ## Pull request bases
 

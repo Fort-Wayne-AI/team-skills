@@ -1,6 +1,6 @@
-# Fort Wayne AI Tasks Schema
+# Tasks Schema
 
-Source: GitHub Issues on `Fort-Wayne-AI/fort-wayne-ai-web-hub`. All active project tasks live here.
+Source: GitHub Issues in the current project repository.
 
 ## Required labels
 
@@ -33,11 +33,11 @@ Source: GitHub Issues on `Fort-Wayne-AI/fort-wayne-ai-web-hub`. All active proje
 
 ## Milestones
 
-Milestones group issues by target sprint or release window. Use the `August 2026 Sprint` convention for time-boxed work. Issues may also have no milestone (unscheduled / backlog).
+Milestones group issues by target sprint or release window. Issues may also have no milestone (unscheduled / backlog).
 
 ## Assignees
 
-GitHub handles (e.g. `aualdrich`). Do not infer from a display name.
+GitHub handles. Do not infer from a display name.
 
 ## Issue author
 

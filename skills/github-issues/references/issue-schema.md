@@ -1,6 +1,6 @@
-# Fort Wayne AI GitHub Issues Schema
+# GitHub Issues Schema
 
-Source: GitHub Issues on `Fort-Wayne-AI/fort-wayne-ai-web-hub`. All active project tasks live here.
+Source: GitHub Issues in the current project repository.
 
 ## Required labels
 
@@ -39,7 +39,7 @@ Milestones group issues by target sprint or release window. Use the `August 2026
 
 ## Assignees
 
-GitHub handles (e.g. `aualdrich`). Unlike Notion, these are the same usernames used across the platform. Do not infer from a display name.
+GitHub handles. Unlike Notion, these are the same usernames used across the platform. Do not infer from a display name.
 
 ## Issue body template
 
