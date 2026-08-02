@@ -18,7 +18,7 @@ const packageMetadata = JSON.parse(readFileSync(join(packageRoot, "package.json"
 const skillsRoot = join(packageRoot, "skills");
 const pointerTemplate = readFileSync(join(packageRoot, "templates", "agents-pointer.md"), "utf8");
 const targets = [".agents", ".claude", ".hermes"];
-const skills = ["project-conventions", "software-development-lifecycle", "notion-cli", "task-management", "developer-secrets"];
+const skills = ["project-conventions", "software-development-lifecycle", "github-issues", "task-management", "developer-secrets"];
 
 function usage(error) {
   const message = `Usage:

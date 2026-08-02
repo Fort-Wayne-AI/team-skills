@@ -1,64 +1,42 @@
 ---
 name: task-management
-description: Manage project tasks in the Fort Wayne AI Notion Tasks data source with its verified property schema. Use when listing, creating, updating, assigning, prioritizing, scheduling, or completing project tasks in Notion.
+description: Manage project tasks in GitHub Issues with the canonical label taxonomy. Use when listing, creating, updating, assigning, prioritizing, scheduling, or completing project tasks.
 ---
 
 # Task Management
 
-Load `notion-cli` first. It provides the required `ntn` dependency, `NOTION_API_TOKEN` authentication, schema-discovery procedure, package-local invocation, and write safeguards.
+Load `github-issues` first. It provides the `gh` CLI authentication, issue commands, and the label taxonomy.
 
 ## Canonical task list
 
-Project tasks live in this Notion database:
-
-- URL: `https://app.notion.com/p/angiecarel/0da40ff2d310408a98e4e0be37895add?v=2b62bd60d0f642f7ab2073c0d33a5ccc&source=copy_link`
-- Database ID: `0da40ff2d310408a98e4e0be37895add`
-- Data source ID: `73ab655f-03d8-42e0-a87f-61da3d429c46`
-- Data source name: `Tasks`
-
-IDs and property schema were verified on 2026-07-16. Re-fetch the schema before writes because Notion owners may change it:
-
-```bash
-npx --no-install ntn api /v1/data_sources/73ab655f-03d8-42e0-a87f-61da3d429c46 --notion-version 2025-09-03
-```
+Project tasks live in GitHub Issues on the current repository. From the project root, `gh` auto-detects the repo.
 
 ## Read tasks
 
 ```bash
-npx --no-install ntn datasources query 73ab655f-03d8-42e0-a87f-61da3d429c46 --limit 50 --json
+gh issue list --limit 50
 ```
 
-Filter on the exact property names and values in [references/tasks-schema.md](references/tasks-schema.md). Paginate whenever the response says `has_more: true`.
+Filter on the exact label names in [references/tasks-schema.md](references/tasks-schema.md). Paginate with `--limit` and `--search` for date-range queries.
 
 ## Task operations
 
-1. **Fetch:** query the data source and inspect the existing task/page before changing it.
-2. **Create:** before writing, obtain an explicit title and intended status, priority, due date, project relation, and assignee if applicable. Default only when the user explicitly permits defaults.
-3. **Update:** patch only properties requested by the user. Preserve existing relation, reporter, assignee, and dates unless a change was requested.
-4. **Complete:** clarify whether the user means `Status = Done`, `Done = Done`, or both; normally update both for consistency and set `Completed On (auto)` only if the workspace automation does not do so.
-5. **Verify:** retrieve the returned page after every mutation and report the page ID plus the fields changed.
+1. **Fetch:** view the existing issue before changing it.
+2. **Create:** before writing, obtain an explicit title, labels, milestone, and assignee if applicable. Default only when the user explicitly permits defaults.
+3. **Update:** patch only properties requested by the user. Preserve existing assignee, labels, and milestone unless a change was requested.
+4. **Complete:** close the issue with a summary comment. The closed state replaces the old Notion `Done` property.
+5. **Verify:** after every mutation, run `gh issue view <number>` and report the current state plus the fields changed.
 
-Use `npx --no-install ntn api /v1/pages --docs` and the narrow payload patterns in `notion-cli` for all creates and updates. Never create test tasks in the shared list without explicit authorization.
+Use the `github-issues` skill for all `gh issue` commands. Never create test issues in the shared repos without explicit authorization.
 
-## Status updates
+## Status transitions
 
-The scripts in [scripts/](scripts/) perform common task status transitions. They require `NOTION_API_TOKEN` and `ntn` (available after `npm install` in the project root).
+Refer to the `software-development-lifecycle` skill for *when* to update issue status during the development workflow. Use direct `gh` commands for the *how*:
 
-| Script | Purpose | Example |
-|---|---|---|
-| `scripts/task-update-status.sh` | Set Status (+ optional Done) on a page | `./scripts/task-update-status.sh <page-id> "In Progress" "Not started"` |
-| `scripts/task-batch-completed.sh` | List completed tasks for release notes | `./scripts/task-batch-completed.sh <data-source-id> 2026-07-01` |
-
-### Typical status transitions
-
-Refer to the `software-development-lifecycle` skill for *when* to run these during the development workflow. The scripts above handle the *how*:
-
-| Desired state | Script call |
+| Desired state | Command |
 |---|---|
-| Work begins | `./scripts/task-update-status.sh <page-id> "In Progress" "Not started"` |
-| PR submitted for review | `./scripts/task-update-status.sh <page-id> "In Review" "Not started"` |
-| PR merged, work complete | `./scripts/task-update-status.sh <page-id> "Done" "Done"` |
-| Blocked | `./scripts/task-update-status.sh <page-id> "Blocked"` |
-| Release notes batch | `./scripts/task-batch-completed.sh <data-source-id> <since-date>` |
-
-These scripts are convenience wrappers around `npx --no-install ntn api /v1/pages`. You can always use `ntn` directly for custom payloads.
+| Work begins | `gh issue edit <n> --add-label "status:in-progress" --remove-label "status:todo"` |
+| PR submitted for review | `gh issue edit <n> --add-label "status:in-review" --remove-label "status:in-progress"` |
+| PR merged, work complete | `gh issue close <n> -c "Merged. Status update."` |
+| Blocked | `gh issue edit <n> --add-label "status:blocked"` |
+| Release notes batch | `gh issue list -s closed -l "status:done" --search "closed:>2026-08-01" --json title,number,closedAt` |
