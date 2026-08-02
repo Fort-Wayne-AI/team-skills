@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import test from "node:test";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
@@ -49,6 +49,17 @@ test("CLI lists non-secret vault metadata", () => {
 test("setup installs current skills and omits retired skills", () => {
   const root = mkdtempSync(join(tmpdir(), "team-skills-consumer-"));
   try {
+    for (const skill of ["environment-secrets", "notion-cli"]) {
+      const physical = join(root, ".agents", "skills", skill);
+      mkdirSync(physical, { recursive: true });
+      writeFileSync(join(physical, ".team-skills.json"), JSON.stringify({ package: "@fort-wayne-ai/team-skills", version: "0.8.0", skill }));
+      writeFileSync(join(physical, "SKILL.md"), `name: ${skill}\n`);
+      for (const target of [".claude", ".hermes"]) {
+        const link = join(root, target, "skills", skill);
+        mkdirSync(dirname(link), { recursive: true });
+        symlinkSync(relative(dirname(link), physical), link, "dir");
+      }
+    }
     execFileSync(process.execPath, [cli, "setup", "--project", root], { encoding: "utf8" });
     const developer = join(root, ".agents", "skills", "developer-secrets");
     assert.equal(existsSync(developer), true);
@@ -59,6 +70,8 @@ test("setup installs current skills and omits retired skills", () => {
     assert.match(readFileSync(join(githubIssues, "SKILL.md"), "utf8"), /name: github-issues/);
     assert.equal(existsSync(join(root, ".agents", "skills", "environment-secrets")), false);
     assert.equal(existsSync(join(root, ".agents", "skills", "notion-cli")), false);
+    assert.equal(existsSync(join(root, ".claude", "skills", "notion-cli")), false);
+    assert.equal(existsSync(join(root, ".hermes", "skills", "environment-secrets")), false);
     assert.equal(lstatSync(join(root, ".claude", "skills", "developer-secrets")).isSymbolicLink(), true);
     assert.equal(lstatSync(join(root, ".hermes", "skills", "github-issues")).isSymbolicLink(), true);
     const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
@@ -68,11 +81,22 @@ test("setup installs current skills and omits retired skills", () => {
   } finally { cleanup(root); }
 });
 
+test("setup preserves an unmanaged retired skill directory", () => {
+  const root = mkdtempSync(join(tmpdir(), "team-skills-unmanaged-retired-"));
+  try {
+    const unmanaged = join(root, ".agents", "skills", "notion-cli");
+    mkdirSync(unmanaged, { recursive: true });
+    writeFileSync(join(unmanaged, "SKILL.md"), "name: local-notion-workflow\n");
+    execFileSync(process.execPath, [cli, "setup", "--project", root], { encoding: "utf8" });
+    assert.equal(existsSync(join(unmanaged, "SKILL.md")), true);
+  } finally { cleanup(root); }
+});
+
 test("package metadata, documentation, and CI describe the current release", () => {
   const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
   const workflow = readFileSync(join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
-  assert.equal(pkg.version, "0.9.1");
+  assert.equal(pkg.version, "0.9.2");
   assert.equal(pkg.dependencies?.ntn, undefined);
   assert.match(readme, /team-skills vault/);
   assert.match(readme, /github-issues/);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.2 — 2026-08-02
+
+### Fixed
+
+- `team-skills setup` now removes retired managed skills and their agent-directory symlinks while preserving unmanaged directories.
+
 ## 0.9.1 — 2026-08-02
 
 ### Fixed
