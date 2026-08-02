@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 — 2026-08-02
+
+### Fixed
+
+- Package and lockfile versions now match the Git release tag.
+- Removed the retired `ntn` dependency after migrating task tracking to GitHub Issues.
+
 ## 0.9.0 — 2026-08-01
 
 ### Added
