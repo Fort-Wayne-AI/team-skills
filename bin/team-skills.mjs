@@ -3,7 +3,9 @@
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
+  readlinkSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -19,6 +21,7 @@ const skillsRoot = join(packageRoot, "skills");
 const pointerTemplate = readFileSync(join(packageRoot, "templates", "agents-pointer.md"), "utf8");
 const targets = [".agents", ".claude", ".hermes"];
 const skills = ["project-conventions", "software-development-lifecycle", "github-issues", "task-management", "developer-secrets"];
+const retiredSkills = ["environment-secrets", "notion-cli"];
 
 function usage(error) {
   const message = `Usage:
@@ -61,7 +64,34 @@ function writeManagedPointer(project) {
   writeFileSync(path, next, "utf8");
 }
 
+function removeRetiredManagedSkills(project) {
+  for (const skill of retiredSkills) {
+    const physicalDest = join(project, ".agents", "skills", skill);
+    const marker = join(physicalDest, ".team-skills.json");
+    const wasManaged = existsSync(marker);
+    if (!wasManaged) continue;
+
+    for (const target of targets.slice(1)) {
+      const linkDest = join(project, target, "skills", skill);
+      let isManagedLink = false;
+      try {
+        isManagedLink =
+          lstatSync(linkDest).isSymbolicLink() &&
+          readlinkSync(linkDest) === relative(dirname(linkDest), physicalDest);
+      } catch {
+        // Missing paths need no cleanup.
+      }
+      if (isManagedLink || existsSync(join(linkDest, ".team-skills.json"))) {
+        rmSync(linkDest, { recursive: true, force: true });
+      }
+    }
+    rmSync(physicalDest, { recursive: true, force: true });
+    console.log(`Removed retired managed skill ${skill}`);
+  }
+}
+
 function installSkills(project, force) {
+  removeRetiredManagedSkills(project);
   for (const skill of skills) {
     const source = join(skillsRoot, skill);
     const physicalDest = join(project, ".agents", "skills", skill);
